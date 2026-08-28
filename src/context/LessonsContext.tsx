@@ -74,11 +74,28 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
         if (localSaved) {
           const parsed: Lesson[] = JSON.parse(localSaved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const parsedIds = new Set(parsed.map(p => p.id));
-            combinedLessons = [
-              ...parsed,
-              ...INITIAL_LESSONS.filter(init => !parsedIds.has(init.id))
-            ];
+            const initialMap = new Map(INITIAL_LESSONS.map(l => [l.id, l]));
+            combinedLessons = parsed.map(p => {
+              if (initialMap.has(p.id)) {
+                const init = initialMap.get(p.id)!;
+                return {
+                  ...p,
+                  country: init.country,
+                  stage: init.stage,
+                  gradeNumber: init.gradeNumber,
+                  subjectId: init.subjectId,
+                  subjectName: init.subjectName,
+                  unitTitle: init.unitTitle,
+                };
+              }
+              return p;
+            });
+            const currentIds = new Set(combinedLessons.map(c => c.id));
+            for (const init of INITIAL_LESSONS) {
+              if (!currentIds.has(init.id)) {
+                combinedLessons.push(init);
+              }
+            }
           }
         }
       } catch (err) {
@@ -112,9 +129,25 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
             snapshot.forEach((docSnap) => {
               firestoreLessons.push(docSnap.data() as Lesson);
             });
-            const ids = new Set(firestoreLessons.map(l => l.id));
+            const initialMap = new Map(INITIAL_LESSONS.map(l => [l.id, l]));
+            const mappedFirestore = firestoreLessons.map(fl => {
+              if (initialMap.has(fl.id)) {
+                const init = initialMap.get(fl.id)!;
+                return {
+                  ...fl,
+                  country: init.country,
+                  stage: init.stage,
+                  gradeNumber: init.gradeNumber,
+                  subjectId: init.subjectId,
+                  subjectName: init.subjectName,
+                  unitTitle: init.unitTitle,
+                };
+              }
+              return fl;
+            });
+            const ids = new Set(mappedFirestore.map(l => l.id));
             combinedLessons = [
-              ...firestoreLessons,
+              ...mappedFirestore,
               ...combinedLessons.filter(l => !ids.has(l.id))
             ];
           }
@@ -317,14 +350,34 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
       }
 
       let addedCount = 0;
+      let updatedCount = 0;
       const currentList = [...lessons];
-      const newLessonsToAdd: Lesson[] = [];
+      const lessonsToPersist: Lesson[] = [];
 
       for (const video of channelVideos) {
-        const exists = currentList.some(l => l.youtubeId === video.id || l.id === `yt_${video.id}`);
-        if (!exists) {
-          const parsed = parseVideoTitleToCurriculum(video.title, video.description);
-          
+        const existingIdx = currentList.findIndex(l => l.youtubeId === video.id || l.id === `yt_${video.id}`);
+        const parsed = parseVideoTitleToCurriculum(video.title, video.description);
+
+        if (existingIdx >= 0) {
+          // Re-classify and update existing lesson
+          const existing = currentList[existingIdx];
+          const updatedLesson: Lesson = {
+            ...existing,
+            title: video.title,
+            description: video.description || existing.description,
+            country: parsed.country,
+            stage: parsed.stage,
+            gradeNumber: parsed.gradeNumber,
+            subjectId: parsed.subjectId,
+            subjectName: parsed.subjectName,
+            unitTitle: parsed.unitTitle,
+            thumbnailUrl: video.thumbnailUrl || existing.thumbnailUrl,
+          };
+          currentList[existingIdx] = updatedLesson;
+          lessonsToPersist.push(updatedLesson);
+          updatedCount++;
+        } else {
+          // Add new lesson
           const newLesson: Lesson = {
             id: `yt_${video.id}`,
             title: video.title,
@@ -345,32 +398,31 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
             createdAt: video.publishedAt || new Date().toISOString(),
           };
 
-          newLessonsToAdd.push(newLesson);
+          lessonsToPersist.push(newLesson);
           currentList.unshift(newLesson);
           addedCount++;
         }
       }
 
-      if (newLessonsToAdd.length > 0) {
-        await persistLessons(currentList);
+      await persistLessons(currentList);
 
-        // Fast parallel Firestore writes
-        if (db) {
-          try {
-            await Promise.allSettled(
-              newLessonsToAdd.map(nl => setDoc(doc(db, 'lessons', nl.id), nl))
-            );
-          } catch (e) {
-            console.warn('Firestore bulk sync note:', e);
-          }
+      // Parallel async Firestore save
+      if (db && lessonsToPersist.length > 0) {
+        try {
+          await Promise.allSettled(
+            lessonsToPersist.map(l => setDoc(doc(db, 'lessons', l.id), l, { merge: true }))
+          );
+        } catch (e) {
+          console.warn('Firestore bulk sync note:', e);
         }
       }
 
+      const totalEffect = addedCount + updatedCount;
       return {
         success: true,
-        count: addedCount,
-        message: addedCount > 0 
-          ? `تمت المزامنة بنجاح! تم استيراد ${addedCount} درس جديد وتصنيفها تلقائياً بحسب الدولة والمنهج.` 
+        count: totalEffect,
+        message: totalEffect > 0 
+          ? `تمت المزامنة بنجاح! تم تحديث وتصنيف ${totalEffect} درس وحفظها في قاعدة البيانات.` 
           : 'كافة دروس القناة الحالية متزامنة ومصنفة بالكامل.'
       };
     } catch (err: any) {

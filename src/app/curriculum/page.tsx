@@ -35,19 +35,26 @@ function CurriculumPageInner() {
     }
   }, [activeCountryCode, stages, currentStage]);
 
+  const stageGrades = getGradesForCountry(activeCountryCode, currentStage);
+  const stageSubjects = getSubjectsForCountry(activeCountryCode, currentStage, currentGrade);
+  const currentStageInfo = stages.find((s) => s.id === currentStage);
+
   // Filter lessons strictly by country & stage & grade & subject
   const filteredLessons = lessons.filter((lesson) => {
     const lessonCountry = lesson.country || 'sa';
     if (activeCountryCode !== 'general' && lessonCountry !== activeCountryCode) return false;
     if (currentStage && lesson.stage !== currentStage) return false;
     if (currentGrade && lesson.gradeNumber !== currentGrade) return false;
-    if (currentSubject && lesson.subjectId !== currentSubject) return false;
+    if (currentSubject) {
+      if (lesson.subjectId !== currentSubject) {
+        const selectedSubObj = stageSubjects.find(s => s.id === currentSubject);
+        if (!selectedSubObj || lesson.subjectName !== selectedSubObj.name) {
+          return false;
+        }
+      }
+    }
     return true;
   });
-
-  const stageGrades = getGradesForCountry(activeCountryCode, currentStage);
-  const stageSubjects = getSubjectsForCountry(activeCountryCode, currentStage);
-  const currentStageInfo = stages.find((s) => s.id === currentStage);
 
   return (
     <div className="min-h-screen py-10 bg-slate-50/60 dark:bg-slate-950/40">

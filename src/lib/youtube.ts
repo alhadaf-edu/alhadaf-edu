@@ -27,131 +27,108 @@ export function parseVideoTitleToCurriculum(title: string, desc: string = ''): {
   subjectName: string;
   unitTitle: string;
 } {
-  const text = (title + ' ' + desc).toLowerCase();
+  let cleanText = (title + ' ' + desc).toLowerCase();
+  // Strip term & lesson phrases so "الفصل الأول" or "الدرس الأول" does not trick the grade detector into Grade 1
+  cleanText = cleanText
+    .replace(/الفصل\s+(الدراسي\s+)?(الأول|الاول|الثاني|الثانى|الثالث)/g, ' ')
+    .replace(/الترم\s+(الأول|الاول|الثاني|الثانى)/g, ' ')
+    .replace(/الدرس\s+(الأول|الاول|الثاني|الثانى|الثالث|الرابع|الخامس|السادس)/g, ' ');
 
   // 1. Country Detection
   let country: CountryCode = 'sa';
 
   if (
-    text.includes('مصر') || 
-    text.includes('مصري') || 
-    text.includes('إعدادي') || 
-    text.includes('اعدادي') || 
-    text.includes('الثانوية العامة') ||
-    text.includes('ثانوية عامة') ||
-    text.includes('أولى إعدادي') ||
-    text.includes('تانية إعدادي') ||
-    text.includes('تالتة إعدادي') ||
-    text.includes('أولى ثانوي') ||
-    text.includes('تانية ثانوي') ||
-    text.includes('تالتة ثانوي') ||
-    text.includes('الترم الأول') ||
-    text.includes('الترم الثاني') ||
-    text.includes('سلاح التلميذ') ||
-    text.includes('الأضواء')
+    cleanText.includes('مصر') || 
+    cleanText.includes('مصري') || 
+    cleanText.includes('إعدادي') || 
+    cleanText.includes('اعدادي') || 
+    cleanText.includes('الثانوية العامة') ||
+    cleanText.includes('ثانوية عامة') ||
+    cleanText.includes('سلاح التلميذ') ||
+    cleanText.includes('الأضواء')
   ) {
     country = 'eg';
   } else if (
-    text.includes('الإمارات') || 
-    text.includes('امارات') || 
-    text.includes('حلقة أولى') || 
-    text.includes('حلقة ثانية') || 
-    text.includes('حلقة ثالثة')
+    cleanText.includes('الإمارات') || 
+    cleanText.includes('امارات') || 
+    cleanText.includes('حلقة')
   ) {
     country = 'ae';
-  } else if (text.includes('الكويت') || text.includes('كويتي')) {
+  } else if (cleanText.includes('الكويت') || cleanText.includes('كويتي')) {
     country = 'kw';
-  } else if (text.includes('الأردن') || text.includes('اردن') || text.includes('توجيهي')) {
+  } else if (cleanText.includes('الأردن') || cleanText.includes('اردن') || cleanText.includes('توجيهي')) {
     country = 'jo';
   } else if (
-    text.includes('السعودية') || 
-    text.includes('سعودي') || 
-    text.includes('1448') || 
-    text.includes('1447') || 
-    text.includes('مسارات') || 
-    text.includes('متوسط') || 
-    text.includes('نافس') || 
-    text.includes('تحصيلي') || 
-    text.includes('قدرات')
+    cleanText.includes('السعودية') || 
+    cleanText.includes('سعودي') || 
+    cleanText.includes('1448') || 
+    cleanText.includes('1447') || 
+    cleanText.includes('مسارات') || 
+    cleanText.includes('متوسط') || 
+    cleanText.includes('نافس') || 
+    cleanText.includes('تحصيلي') || 
+    cleanText.includes('قدرات')
   ) {
     country = 'sa';
   }
 
-  // 2. Stage & Grade Detection
+  // 2. Stage Detection
   let stage: StageType = 'secondary';
-  let gradeNumber = 1;
-
-  if (country === 'eg') {
-    if (text.includes('ابتدائي') || text.includes('ابتدائى')) {
-      stage = 'elementary';
-      if (text.includes('أول') || text.includes('اول') || text.includes('أولى')) gradeNumber = 1;
-      else if (text.includes('ثاني') || text.includes('ثانى') || text.includes('تانية')) gradeNumber = 2;
-      else if (text.includes('ثالث') || text.includes('تالتة')) gradeNumber = 3;
-      else if (text.includes('رابع') || text.includes('رابعة')) gradeNumber = 4;
-      else if (text.includes('خامس') || text.includes('خامسة')) gradeNumber = 5;
-      else if (text.includes('سادس') || text.includes('ستة')) gradeNumber = 6;
-    } else if (text.includes('إعدادي') || text.includes('اعدادي')) {
-      stage = 'middle';
-      if (text.includes('أول') || text.includes('اول') || text.includes('أولى')) gradeNumber = 1;
-      else if (text.includes('ثاني') || text.includes('ثانى') || text.includes('تانية')) gradeNumber = 2;
-      else if (text.includes('ثالث') || text.includes('تالتة') || text.includes('الشهادة الإعدادية')) gradeNumber = 3;
-    } else {
-      stage = 'secondary';
-      if (text.includes('أول') || text.includes('اول') || text.includes('أولى')) gradeNumber = 1;
-      else if (text.includes('ثاني') || text.includes('ثانى') || text.includes('تانية')) gradeNumber = 2;
-      else if (text.includes('ثالث') || text.includes('تالتة') || text.includes('الثانوية العامة')) gradeNumber = 3;
-    }
+  if (cleanText.includes('ابتدائي') || cleanText.includes('ابتدائى') || cleanText.includes('الابتدائي')) {
+    stage = 'elementary';
+  } else if (cleanText.includes('متوسط') || cleanText.includes('المتوسط') || cleanText.includes('إعدادي') || cleanText.includes('اعدادي') || cleanText.includes('الإعدادي')) {
+    stage = 'middle';
   } else {
-    // Saudi & General Stages
-    if (text.includes('ابتدائي') || text.includes('ابتدائى')) {
-      stage = 'elementary';
-      if (text.includes('أول') || text.includes('اول') || text.includes('الاول')) gradeNumber = 1;
-      else if (text.includes('ثاني') || text.includes('ثانى') || text.includes('الثاني')) gradeNumber = 2;
-      else if (text.includes('ثالث') || text.includes('الثالث')) gradeNumber = 3;
-      else if (text.includes('رابع') || text.includes('الرابع')) gradeNumber = 4;
-      else if (text.includes('خامس') || text.includes('الخامس')) gradeNumber = 5;
-      else if (text.includes('سادس') || text.includes('السادس')) gradeNumber = 6;
-    } else if (text.includes('متوسط')) {
-      stage = 'middle';
-      if (text.includes('أول') || text.includes('اول') || text.includes('الاول')) gradeNumber = 1;
-      else if (text.includes('ثاني') || text.includes('ثانى') || text.includes('الثاني')) gradeNumber = 2;
-      else if (text.includes('ثالث') || text.includes('الثالث')) gradeNumber = 3;
-    } else {
-      stage = 'secondary';
-      if (text.includes('أول') || text.includes('اول') || text.includes('الاول')) gradeNumber = 1;
-      else if (text.includes('ثاني') || text.includes('ثانى') || text.includes('الثاني')) gradeNumber = 2;
-      else if (text.includes('ثالث') || text.includes('الثالث')) gradeNumber = 3;
-    }
+    stage = 'secondary';
   }
 
-  // 3. Subject Detection
-  let subjectId = country === 'eg' ? 'eg-math-mid' : 'math-mid';
-  let subjectName = 'الرياضيات';
+  // 3. Grade Detection (accurate numbers)
+  let gradeNumber = 1;
+  if (cleanText.includes('سادس') || cleanText.includes('السادس') || cleanText.includes('ستة') || cleanText.includes('الصف 6') || cleanText.includes('6 ابتدائي')) {
+    gradeNumber = 6;
+  } else if (cleanText.includes('خامس') || cleanText.includes('الخامس') || cleanText.includes('خامسة') || cleanText.includes('الصف 5') || cleanText.includes('5 ابتدائي')) {
+    gradeNumber = 5;
+  } else if (cleanText.includes('رابع') || cleanText.includes('الرابع') || cleanText.includes('رابعة') || cleanText.includes('الصف 4') || cleanText.includes('4 ابتدائي')) {
+    gradeNumber = 4;
+  } else if (cleanText.includes('ثالث') || cleanText.includes('الثالث') || cleanText.includes('تالتة') || cleanText.includes('الصف 3') || cleanText.includes('3 متوسط') || cleanText.includes('3 ثانوي') || cleanText.includes('3 إعدادي')) {
+    gradeNumber = 3;
+  } else if (cleanText.includes('ثاني') || cleanText.includes('الثاني') || cleanText.includes('ثانى') || cleanText.includes('تانية') || cleanText.includes('تاني') || cleanText.includes('الصف 2') || cleanText.includes('2 متوسط') || cleanText.includes('2 ثانوي') || cleanText.includes('2 إعدادي')) {
+    gradeNumber = 2;
+  } else if (cleanText.includes('أول') || cleanText.includes('الأول') || cleanText.includes('اول') || cleanText.includes('الاول') || cleanText.includes('أولى') || cleanText.includes('اولى') || cleanText.includes('الصف 1') || cleanText.includes('1 متوسط') || cleanText.includes('1 ثانوي') || cleanText.includes('1 إعدادي')) {
+    gradeNumber = 1;
+  }
 
-  if (text.includes('اجتماعيات') || text.includes('الدراسات الاجتماعية') || text.includes('دراسات')) {
+  // 4. Subject Detection
+  let subjectId = '';
+  let subjectName = '';
+
+  if (cleanText.includes('اجتماعيات') || cleanText.includes('الدراسات الاجتماعية') || cleanText.includes('دراسات')) {
     subjectId = country === 'eg' ? 'eg-social-mid' : (stage === 'elementary' ? 'social-elem' : 'social-mid');
     subjectName = 'الدراسات الاجتماعية';
-  } else if (text.includes('جبر') || text.includes('هندسة') || text.includes('حساب مثلثات')) {
-    subjectId = country === 'eg' ? 'eg-math-mid' : 'math-mid';
+  } else if (cleanText.includes('جبر') || cleanText.includes('هندسة') || cleanText.includes('حساب مثلثات')) {
+    subjectId = country === 'eg' ? 'eg-math-mid' : (stage === 'elementary' ? 'math-elem' : stage === 'middle' ? 'math-mid' : 'math-sec');
     subjectName = country === 'eg' ? 'الجبر والهندسة' : 'الرياضيات';
-  } else if (text.includes('رياضيات') || text.includes('الرياضيات') || text.includes('حساب')) {
+  } else if (cleanText.includes('رياضيات') || cleanText.includes('الرياضيات') || cleanText.includes('حساب') || cleanText.includes('أعداد') || cleanText.includes('اعداد') || cleanText.includes('القوى') || cleanText.includes('القيمة المنزلية') || cleanText.includes('العوامل')) {
     subjectId = country === 'eg' ? 'eg-math-mid' : (stage === 'elementary' ? 'math-elem' : stage === 'middle' ? 'math-mid' : 'math-sec');
     subjectName = 'الرياضيات';
-  } else if (text.includes('فيزياء') || text.includes('فزياء')) {
+  } else if (cleanText.includes('فيزياء') || cleanText.includes('فزياء')) {
     subjectId = country === 'eg' ? 'eg-physics-sec' : 'physics-sec';
     subjectName = 'الفيزياء';
-  } else if (text.includes('احياء') || text.includes('أحياء')) {
+  } else if (cleanText.includes('احياء') || cleanText.includes('أحياء') || cleanText.includes('شوكيات')) {
     subjectId = country === 'eg' ? 'eg-bio-sec' : 'bio-sec';
     subjectName = 'الأحياء';
-  } else if (text.includes('كيمياء') || text.includes('الكيمياء')) {
+  } else if (cleanText.includes('كيمياء') || cleanText.includes('الكيمياء')) {
     subjectId = country === 'eg' ? 'eg-chem-sec' : 'chem-sec';
     subjectName = 'الكيمياء';
-  } else if (text.includes('علوم') || text.includes('العلوم')) {
+  } else if (cleanText.includes('علوم') || cleanText.includes('العلوم')) {
     subjectId = country === 'eg' ? 'eg-science-mid' : (stage === 'elementary' ? 'science-elem' : 'science-mid');
     subjectName = 'العلوم';
-  } else if (text.includes('لغتي') || text.includes('اللغة العربية') || text.includes('نحو') || text.includes('عربي')) {
+  } else if (cleanText.includes('لغتي') || cleanText.includes('اللغة العربية') || cleanText.includes('نحو') || cleanText.includes('عربي')) {
     subjectId = country === 'eg' ? 'eg-arabic-mid' : (stage === 'elementary' ? 'arabic-elem' : stage === 'middle' ? 'arabic-mid' : 'arabic-sec');
     subjectName = country === 'eg' ? 'اللغة العربية' : (stage === 'elementary' ? 'لغتي الجميلة' : stage === 'middle' ? 'لغتي الخالدة' : 'الكفايات اللغوية');
+  } else {
+    subjectId = stage === 'elementary' ? 'math-elem' : stage === 'middle' ? 'math-mid' : 'physics-sec';
+    subjectName = 'الرياضيات';
   }
 
   // Unit Title

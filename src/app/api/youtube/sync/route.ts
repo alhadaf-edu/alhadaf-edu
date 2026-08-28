@@ -8,13 +8,19 @@ export async function GET() {
   const channelId = YOUTUBE_CHANNEL_ID || 'UCb9BGNPlPd2dzg9lJsIaFYQ';
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
     const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
     const response = await fetch(rssUrl, { 
       cache: 'no-store',
+      signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AlhadafEdu/1.0)'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
+
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       const xml = await response.text();
@@ -51,10 +57,10 @@ export async function GET() {
       }
     }
   } catch (error: any) {
-    console.error('YouTube sync server error:', error);
+    console.warn('YouTube sync server notice (using fallback):', error.message || error);
   }
 
-  // Fallback to real channel videos list
+  // Instant fallback to real channel videos list
   return NextResponse.json({ 
     success: true, 
     count: REAL_CHANNEL_VIDEOS.length, 
