@@ -1,48 +1,81 @@
 'use client';
 
-import React from 'react';
-import { Video, HelpCircle, Users, Award } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Video, HelpCircle, Users, Globe2 } from 'lucide-react';
 import { useLessons } from '@/context/LessonsContext';
 import { useAuth } from '@/context/AuthContext';
-import { getCountryInfo } from '@/lib/curriculumData';
+import { getCountryInfo, ARAB_COUNTRIES } from '@/lib/curriculumData';
+import { db } from '@/lib/firebase';
+import { collection, getCountFromServer, getDocs } from 'firebase/firestore';
 
 export default function StatsSection() {
   const { selectedCountry, lessons, quizzes } = useLessons();
   const { profile } = useAuth();
+  const [usersCount, setUsersCount] = useState<number>(0);
 
   const activeCountryCode = profile?.country || selectedCountry || 'sa';
   const country = getCountryInfo(activeCountryCode);
 
+  // Real counts
+  const countryLessonsCount = lessons.filter(l => l.country === activeCountryCode).length;
+  const totalLessonsCount = lessons.length;
+  const countryQuizzesCount = quizzes.filter(q => q.country === activeCountryCode).length;
+  const totalQuizzesCount = quizzes.length;
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRealUsersCount = async () => {
+      if (!db) return;
+      try {
+        // Try getting real registered users count from Firestore
+        const usersCol = collection(db, 'users');
+        const snap = await getDocs(usersCol);
+        if (isMounted) {
+          setUsersCount(snap.size);
+        }
+      } catch {
+        // Fallback if permission error
+        if (isMounted) setUsersCount(0);
+      }
+    };
+    fetchRealUsersCount();
+    return () => { isMounted = false; };
+  }, []);
+
   const stats = [
     {
       icon: Video,
-      value: `+${Math.max(lessons.length * 10, 1500).toLocaleString('ar-EG')}`,
+      value: (countryLessonsCount > 0 ? countryLessonsCount : totalLessonsCount).toLocaleString('ar-EG'),
       label: 'درس وشرح مرئي',
-      desc: `تغطية شاملة لمناهج ${country.shortName}`,
+      desc: countryLessonsCount > 0 
+        ? `شروحات حقيقية لمناهج ${country.shortName}` 
+        : `إجمالي الدروس المتاحة بالمنصة`,
       color: 'text-blue-600 dark:text-blue-400',
       bg: 'bg-blue-50 dark:bg-blue-950/60',
     },
     {
       icon: HelpCircle,
-      value: `+${Math.max(quizzes.length * 50, 450).toLocaleString('ar-EG')}`,
+      value: (countryQuizzesCount > 0 ? countryQuizzesCount : totalQuizzesCount).toLocaleString('ar-EG'),
       label: 'اختبار تقييمي ذكي',
-      desc: 'تصحيح فوري وشرح تفصيلي',
+      desc: countryQuizzesCount > 0 
+        ? `اختبارات تفاعلية لمناهج ${country.shortName}` 
+        : `إجمالي الاختبارات التفاعلية`,
       color: 'text-amber-600 dark:text-amber-400',
       bg: 'bg-amber-50 dark:bg-amber-950/60',
     },
     {
       icon: Users,
-      value: '+85,000',
-      label: 'طالب وطالبة مسجلين',
-      desc: `من مختلف محافظات ومناطق ${country.shortName}`,
+      value: usersCount.toLocaleString('ar-EG'),
+      label: 'مشترك مسجل بالمنصة',
+      desc: 'بيانات حقيقية للمستخدمين المسجلين',
       color: 'text-emerald-600 dark:text-emerald-400',
       bg: 'bg-emerald-50 dark:bg-emerald-950/60',
     },
     {
-      icon: Award,
-      value: '99.4%',
-      label: 'نسبة تفوق ورضا الطلاب',
-      desc: `درجات ممتازة في الامتحانات الرسمية`,
+      icon: Globe2,
+      value: `${ARAB_COUNTRIES.length.toLocaleString('ar-EG')}`,
+      label: 'مناهج عربية معتمدة',
+      desc: 'مصر، السعودية، الإمارات، وغيرها',
       color: 'text-purple-600 dark:text-purple-400',
       bg: 'bg-purple-50 dark:bg-purple-950/60',
     },

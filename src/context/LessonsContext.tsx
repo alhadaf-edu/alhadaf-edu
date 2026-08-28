@@ -292,16 +292,33 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
     return quizzes.find(q => q.id === id);
   };
 
-  // Smart sync from YouTube channel
+  // Smart sync from YouTube channel (blazing fast via server endpoint + parallel Firestore writes)
   const syncWithYouTube = async (): Promise<{ success: boolean; count: number; message: string }> => {
     try {
-      const channelVideos = await fetchChannelVideos(35);
+      let channelVideos: YouTubeVideo[] = [];
+      try {
+        const res = await fetch('/api/youtube/sync', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.videos && Array.isArray(data.videos)) {
+            channelVideos = data.videos;
+          }
+        }
+      } catch (e) {
+        console.warn('API sync fallback to direct client parser', e);
+      }
+
+      if (channelVideos.length === 0) {
+        channelVideos = await fetchChannelVideos(35);
+      }
+
       if (!channelVideos || channelVideos.length === 0) {
         return { success: false, count: 0, message: 'لم يتم العثور على فيديوهات جديدة في القناة.' };
       }
 
       let addedCount = 0;
       const currentList = [...lessons];
+      const newLessonsToAdd: Lesson[] = [];
 
       for (const video of channelVideos) {
         const exists = currentList.some(l => l.youtubeId === video.id || l.id === `yt_${video.id}`);
@@ -328,18 +345,27 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
             createdAt: video.publishedAt || new Date().toISOString(),
           };
 
+          newLessonsToAdd.push(newLesson);
           currentList.unshift(newLesson);
           addedCount++;
+        }
+      }
 
-          if (db) {
-            try {
-              await setDoc(doc(db, 'lessons', newLesson.id), newLesson);
-            } catch {}
+      if (newLessonsToAdd.length > 0) {
+        await persistLessons(currentList);
+
+        // Fast parallel Firestore writes
+        if (db) {
+          try {
+            await Promise.allSettled(
+              newLessonsToAdd.map(nl => setDoc(doc(db, 'lessons', nl.id), nl))
+            );
+          } catch (e) {
+            console.warn('Firestore bulk sync note:', e);
           }
         }
       }
 
-      await persistLessons(currentList);
       return {
         success: true,
         count: addedCount,
