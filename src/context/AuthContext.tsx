@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
@@ -90,43 +90,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         const isAdminUser = currentUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-        
-        // 1. Try to load from Firestore first
-        let firestoreProfile: UserProfile | null = null;
-        if (db) {
-          try {
-            const userDocRef = doc(db, 'users', currentUser.uid);
-            const userSnap = await getDoc(userDocRef);
-            if (userSnap.exists()) {
-              firestoreProfile = userSnap.data() as UserProfile;
-            }
-          } catch (err) {
-            console.warn('Firestore fetch user error:', err);
-          }
-        }
 
-        // 2. Load stored local profile or fallback
-        const savedData = localStorage.getItem(`alhadaf_user_${currentUser.uid}`);
-        let userProfile: UserProfile;
-        
-        if (firestoreProfile) {
-          userProfile = firestoreProfile;
-          if (isAdminUser) userProfile.role = 'superadmin';
-        } else if (savedData) {
-          userProfile = JSON.parse(savedData) as UserProfile;
-          if (!userProfile.role || userProfile.role === ('admin' as string)) {
-            userProfile.role = isAdminUser ? 'superadmin' : (userProfile.role as UserRole) || 'student';
+        // 1. Instant Cache-First profile resolution (0 ms delay)
+        let initialProfile: UserProfile;
+        const savedData = typeof window !== 'undefined' ? localStorage.getItem(`alhadaf_user_${currentUser.uid}`) : null;
+
+        if (savedData) {
+          try {
+            initialProfile = JSON.parse(savedData) as UserProfile;
+            if (isAdminUser) initialProfile.role = 'superadmin';
+          } catch {
+            initialProfile = {
+              uid: currentUser.uid,
+              email: currentUser.email || '',
+              displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'مشترك',
+              photoURL: currentUser.photoURL || undefined,
+              role: isAdminUser ? 'superadmin' : 'student',
+              status: 'active',
+              savedLessons: [],
+              quizHistory: [],
+              createdAt: new Date().toISOString()
+            };
           }
-          if (isAdminUser) userProfile.role = 'superadmin';
         } else {
-          userProfile = {
+          initialProfile = {
             uid: currentUser.uid,
             email: currentUser.email || '',
-            displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'مشترك جديد',
+            displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'مشترك',
             photoURL: currentUser.photoURL || undefined,
             role: isAdminUser ? 'superadmin' : 'student',
             status: 'active',
@@ -136,33 +130,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
         }
 
-        if (!userProfile.status) userProfile.status = 'active';
-
-        if (!isAdminUser && !userProfile.country) {
+        if (!isAdminUser && !initialProfile.country) {
           setNeedsCurriculumSelection(true);
         } else {
           setNeedsCurriculumSelection(false);
         }
 
-        if (userProfile.country && !isAdminUser) {
-          try { localStorage.setItem(COUNTRY_STORAGE_KEY, userProfile.country); } catch {}
+        if (initialProfile.country && !isAdminUser) {
+          try { localStorage.setItem(COUNTRY_STORAGE_KEY, initialProfile.country); } catch {}
         }
-        
-        setProfile(userProfile);
 
-        // Save to LocalStorage & Firestore
-        try {
-          localStorage.setItem(`alhadaf_user_${currentUser.uid}`, JSON.stringify(userProfile));
-          upsertUserInLocalList(userProfile);
-        } catch {}
+        // Set state and release loading spinner IMMEDIATELY
+        setProfile(initialProfile);
+        setLoading(false);
 
-        await syncProfileToFirestore(userProfile);
-
+        // 2. Background Firestore sync (non-blocking)
+        if (db) {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          getDoc(userDocRef).then((userSnap) => {
+            if (userSnap.exists()) {
+              const remoteProfile = userSnap.data() as UserProfile;
+              if (isAdminUser) remoteProfile.role = 'superadmin';
+              setProfile(remoteProfile);
+              try {
+                localStorage.setItem(`alhadaf_user_${currentUser.uid}`, JSON.stringify(remoteProfile));
+                upsertUserInLocalList(remoteProfile);
+              } catch {}
+            } else {
+              syncProfileToFirestore(initialProfile);
+            }
+          }).catch((err) => {
+            console.warn('Background profile sync note:', err);
+          });
+        }
       } else {
         setProfile(null);
         setNeedsCurriculumSelection(false);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

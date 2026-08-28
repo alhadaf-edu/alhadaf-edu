@@ -91,35 +91,33 @@ export default function AdminDashboardPage() {
   const [assignedCountryForMod, setAssignedCountryForMod] = useState<CountryCode>('sa');
   const [userActionMsg, setUserActionMsg] = useState('');
 
+  const [usersLoading, setUsersLoading] = useState(false);
+
   const ALL_USERS_KEY = 'alhadaf_all_users_v1';
 
-  const loadUsers = useCallback(async () => {
-    // 1. Try to fetch from Firebase Firestore directly
-    if (db) {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        if (!querySnapshot.empty) {
-          const list: UserProfile[] = [];
-          querySnapshot.forEach(docSnap => {
-            list.push(docSnap.data() as UserProfile);
-          });
-          setAllUsers(list);
-          try {
-            localStorage.setItem(ALL_USERS_KEY, JSON.stringify(list));
-          } catch {}
-          return;
-        }
-      } catch (err) {
-        console.warn('Firestore fetch users notice:', err);
-      }
-    }
-
-    // 2. LocalStorage fallback
+  const loadUsers = useCallback(() => {
+    // 1. Instant: load from localStorage first (0ms)
     try {
       const raw = localStorage.getItem(ALL_USERS_KEY);
-      const list: UserProfile[] = raw ? JSON.parse(raw) : [];
-      setAllUsers(list);
-    } catch { setAllUsers([]); }
+      const cachedList: UserProfile[] = raw ? JSON.parse(raw) : [];
+      if (cachedList.length > 0) setAllUsers(cachedList);
+    } catch {}
+
+    // 2. Background: fetch from Firestore and update
+    if (!db) return;
+    setUsersLoading(true);
+    getDocs(collection(db, 'users')).then((querySnapshot) => {
+      if (!querySnapshot.empty) {
+        const list: UserProfile[] = [];
+        querySnapshot.forEach(docSnap => list.push(docSnap.data() as UserProfile));
+        setAllUsers(list);
+        try { localStorage.setItem(ALL_USERS_KEY, JSON.stringify(list)); } catch {}
+      }
+    }).catch((err) => {
+      console.warn('Firestore fetch users notice:', err);
+    }).finally(() => {
+      setUsersLoading(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -261,7 +259,8 @@ export default function AdminDashboardPage() {
   const moderators = allUsers.filter(u => u.role === 'moderator');
   // ─────────────────────────────────────────────────────────────────────────
 
-  if (authLoading) {
+  // Block only if still loading AND admin status not yet determined
+  if (authLoading && !isAdmin && !isModerator) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
@@ -270,7 +269,7 @@ export default function AdminDashboardPage() {
   }
 
   // Admin / Moderator protection
-  if (!isAdmin && !isModerator) {
+  if (!authLoading && !isAdmin && !isModerator) {
     return (
       <div className="min-h-screen py-20 flex items-center justify-center bg-slate-50/60 dark:bg-slate-950/40">
         <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center max-w-md mx-4 shadow-xl">
@@ -1048,10 +1047,11 @@ export default function AdminDashboardPage() {
 
                     <button
                       onClick={loadUsers}
-                      className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all"
+                      disabled={usersLoading}
+                      className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all disabled:opacity-60"
                     >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      <span>تحديث</span>
+                      <RefreshCw className={`h-3.5 w-3.5 ${usersLoading ? 'animate-spin' : ''}`} />
+                      <span>{usersLoading ? 'جاري التحديث...' : 'تحديث'}</span>
                     </button>
                   </div>
                 </div>
