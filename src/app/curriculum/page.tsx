@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getStagesForCountry, getGradesForCountry, getSubjectsForCountry, ARAB_COUNTRIES } from '@/lib/curriculumData';
@@ -12,7 +12,7 @@ import IslamicPattern from '@/components/layout/IslamicPattern';
 import { BookOpen, GraduationCap, Globe2, Sparkles } from 'lucide-react';
 import { StageType, CountryCode } from '@/types';
 
-export default function CurriculumPage() {
+function CurriculumPageInner() {
   const searchParams = useSearchParams();
   const { lessons, selectedCountry } = useLessons();
   const { profile } = useAuth();
@@ -214,5 +214,13 @@ export default function CurriculumPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function CurriculumPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div></div>}>
+      <CurriculumPageInner />
+    </Suspense>
   );
 }
