@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: AdSettings = {
   inArticle: true,
   preRollBanner: true,
   footerBanner: true,
-  adClient: process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-0000000000000000',
+  adClient: process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-2318347592935177',
 };
 
 const AdSenseContext = createContext<AdSenseContextType | undefined>(undefined);

@@ -103,7 +103,7 @@ export default function RootLayout({
         />
         <script
           async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0000000000000000"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2318347592935177"
           crossOrigin="anonymous"
         />
       </head>
