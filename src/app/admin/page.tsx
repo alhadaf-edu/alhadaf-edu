@@ -136,41 +136,50 @@ export default function AdminDashboardPage() {
 
   const handleAssignModerator = async () => {
     if (!assignModeratorUser) return;
+    const targetUser = assignModeratorUser;
+    const country = assignedCountryForMod;
+    const countryName = ARAB_COUNTRIES.find(c => c.code === country)?.name || country;
+
+    // 1. Close modal and set feedback IMMEDIATELY
+    setAssignModeratorUser(null);
+
+    // 2. Update local state and localStorage
     const updated = allUsers.map(u => 
-      u.uid === assignModeratorUser.uid
-        ? { ...u, role: 'moderator' as UserRole, assignedCountry: assignedCountryForMod }
+      u.uid === targetUser.uid
+        ? { ...u, role: 'moderator' as UserRole, assignedCountry: country }
         : u
     );
-    await saveAllUsers(updated);
+    saveAllUsers(updated);
+    setUserActionMsg(`✅ تم تعيين ${targetUser.displayName} مشرفاً على ${countryName} بنجاح`);
+    setTimeout(() => setUserActionMsg(''), 4000);
 
+    // 3. Persist to Firestore in background
     if (db) {
       try {
-        await updateDoc(doc(db, 'users', assignModeratorUser.uid), {
+        await setDoc(doc(db, 'users', targetUser.uid), {
           role: 'moderator',
-          assignedCountry: assignedCountryForMod,
-        });
+          assignedCountry: country,
+        }, { merge: true });
       } catch (err) {
         console.warn('Firestore update role error:', err);
       }
     }
-
-    setAssignModeratorUser(null);
-    setUserActionMsg(`تم تعيين ${assignModeratorUser.displayName} مشرفاً على ${ARAB_COUNTRIES.find(c=>c.code===assignedCountryForMod)?.name}`);
-    setTimeout(() => setUserActionMsg(''), 4000);
   };
 
   const handleRevokeModerator = async (uid: string) => {
     const updated = allUsers.map(u =>
       u.uid === uid ? { ...u, role: 'student' as UserRole, assignedCountry: undefined } : u
     );
-    await saveAllUsers(updated);
+    saveAllUsers(updated);
+    setUserActionMsg('تم إلغاء صفة المشرف وتحويل الحساب إلى طالب');
+    setTimeout(() => setUserActionMsg(''), 4000);
 
     if (db) {
       try {
-        await updateDoc(doc(db, 'users', uid), {
+        await setDoc(doc(db, 'users', uid), {
           role: 'student',
           assignedCountry: null as any,
-        });
+        }, { merge: true });
       } catch (err) {
         console.warn('Firestore revoke role error:', err);
       }
@@ -183,14 +192,16 @@ export default function AdminDashboardPage() {
     const updated = allUsers.map(u =>
       u.uid === uid ? { ...u, status: 'warned' as UserStatus, warnMessage: warnMsg } : u
     );
-    await saveAllUsers(updated);
+    saveAllUsers(updated);
+    setUserActionMsg('تم إرسال التنبيه للمستخدم');
+    setTimeout(() => setUserActionMsg(''), 4000);
 
     if (db) {
       try {
-        await updateDoc(doc(db, 'users', uid), {
+        await setDoc(doc(db, 'users', uid), {
           status: 'warned',
           warnMessage: warnMsg,
-        });
+        }, { merge: true });
       } catch (err) {
         console.warn('Firestore warn user error:', err);
       }
@@ -202,13 +213,15 @@ export default function AdminDashboardPage() {
     const updated = allUsers.map(u =>
       u.uid === uid ? { ...u, status: 'banned' as UserStatus } : u
     );
-    await saveAllUsers(updated);
+    saveAllUsers(updated);
+    setUserActionMsg(`تم حظر المستخدم "${name}"`);
+    setTimeout(() => setUserActionMsg(''), 4000);
 
     if (db) {
       try {
-        await updateDoc(doc(db, 'users', uid), {
+        await setDoc(doc(db, 'users', uid), {
           status: 'banned',
-        });
+        }, { merge: true });
       } catch (err) {
         console.warn('Firestore ban user error:', err);
       }
@@ -219,14 +232,16 @@ export default function AdminDashboardPage() {
     const updated = allUsers.map(u =>
       u.uid === uid ? { ...u, status: 'active' as UserStatus, warnMessage: undefined } : u
     );
-    await saveAllUsers(updated);
+    saveAllUsers(updated);
+    setUserActionMsg('تم إلغاء الحظر وتفعيل الحساب');
+    setTimeout(() => setUserActionMsg(''), 4000);
 
     if (db) {
       try {
-        await updateDoc(doc(db, 'users', uid), {
+        await setDoc(doc(db, 'users', uid), {
           status: 'active',
           warnMessage: null as any,
-        });
+        }, { merge: true });
       } catch (err) {
         console.warn('Firestore unban user error:', err);
       }
@@ -236,8 +251,10 @@ export default function AdminDashboardPage() {
   const handleDeleteUser = async (uid: string, name: string) => {
     if (!confirm(`هل تريد حذف المستخدم "${name}" نهائياً؟ لا يمكن التراجع.`)) return;
     const updated = allUsers.filter(u => u.uid !== uid);
-    await saveAllUsers(updated);
+    saveAllUsers(updated);
     try { localStorage.removeItem(`alhadaf_user_${uid}`); } catch {}
+    setUserActionMsg(`تم حذف المستخدم "${name}"`);
+    setTimeout(() => setUserActionMsg(''), 4000);
 
     if (db) {
       try {
