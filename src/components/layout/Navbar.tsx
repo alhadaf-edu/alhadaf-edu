@@ -31,9 +31,11 @@ import { ARAB_COUNTRIES, getStagesForCountry } from '@/lib/curriculumData';
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, profile, isAdmin, logout } = useAuth();
+  const { user, profile, isAdmin, isModerator, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { selectedCountry, setSelectedCountry } = useLessons();
+
+  const canAccessAdmin = isAdmin || isModerator;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [curriculumDropdown, setCurriculumDropdown] = useState(false);
@@ -334,15 +336,15 @@ export default function Navbar() {
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
 
-          {/* Admin shortcut */}
-          {isAdmin && (
+          {/* Admin / Moderator shortcut */}
+          {canAccessAdmin && (
             <Link
               href="/admin"
               className="hidden md:flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-gold-500 hover:from-amber-600 hover:to-gold-600 text-slate-950 font-black px-3 py-1.5 text-xs shadow-md transition-all hover:scale-105 whitespace-nowrap"
-              title="لوحة تحكم المشرف"
+              title={isAdmin ? 'لوحة تحكم المشرف العام' : `لوحة تحكم مشرف منهج ${ARAB_COUNTRIES.find(c => c.code === profile?.assignedCountry)?.name || ''}`}
             >
               <ShieldCheck className="h-4 w-4" />
-              <span>لوحة الإدارة</span>
+              <span>{isAdmin ? 'لوحة الإدارة' : 'لوحة المشرف'}</span>
             </Link>
           )}
 
@@ -359,6 +361,11 @@ export default function Navbar() {
                 <span className="max-w-[70px] sm:max-w-[100px] truncate hidden sm:inline">
                   {profile?.displayName || 'حسابي'}
                 </span>
+                {isModerator && (
+                  <span className="hidden xl:inline text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 font-black px-1.5 py-0.5 rounded-md">
+                    مشرف
+                  </span>
+                )}
                 <ChevronDown className="h-3 w-3 text-slate-400" />
               </button>
 
@@ -369,7 +376,12 @@ export default function Navbar() {
                       {profile?.displayName}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate">{profile?.email}</p>
-                    {profile?.country && (
+                    {isModerator && profile?.assignedCountry && (
+                      <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1 bg-indigo-50 dark:bg-indigo-950/50 p-1 rounded-lg">
+                        🛡️ مشرف منهج: {ARAB_COUNTRIES.find(c => c.code === profile.assignedCountry)?.name}
+                      </p>
+                    )}
+                    {!isModerator && profile?.country && (
                       <p className="text-[10px] text-primary-500 font-semibold mt-0.5">
                         {ARAB_COUNTRIES.find(c => c.code === profile.country)?.flag}{' '}
                         {ARAB_COUNTRIES.find(c => c.code === profile.country)?.name.replace('المملكة العربية ', '')}
@@ -386,10 +398,10 @@ export default function Navbar() {
                       <Bookmark className="h-4 w-4 text-amber-500" />
                       <span>الدروس المحفوظة</span>
                     </Link>
-                    {isAdmin && (
+                    {canAccessAdmin && (
                       <Link href="/admin" className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-800 font-bold">
                         <ShieldCheck className="h-4 w-4" />
-                        <span>لوحة التحكم</span>
+                        <span>{isAdmin ? 'لوحة تحكم المشرف العام' : 'لوحة تحكم المشرف'}</span>
                       </Link>
                     )}
                   </div>
@@ -478,14 +490,14 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {isAdmin && (
+            {canAccessAdmin && (
               <Link
                 href="/admin"
                 className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-bold text-amber-600 dark:text-gold-400 bg-amber-50 dark:bg-slate-900 mt-2"
               >
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4" />
-                  <span>لوحة تحكم المشرف</span>
+                  <span>{isAdmin ? 'لوحة تحكم المشرف العام' : 'لوحة تحكم المشرف'}</span>
                 </div>
                 <span className="text-xs">←</span>
               </Link>
