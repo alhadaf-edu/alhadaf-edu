@@ -5,7 +5,7 @@ import { Lesson, Quiz, YouTubeVideo, CountryCode } from '@/types';
 import { INITIAL_LESSONS, STANDALONE_QUIZZES } from '@/lib/curriculumData';
 import { fetchChannelVideos, parseVideoTitleToCurriculum } from '@/lib/youtube';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 interface LessonsContextType {
   lessons: Lesson[];
@@ -54,148 +54,110 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   };
 
-  // Initialize and load saved lessons, quizzes, and country
+  // Initialize: real-time Firestore listeners (single source of truth)
   useEffect(() => {
-    // 1. Country initialization
+    // 1. Country initialization from localStorage
     try {
       const savedCountry = localStorage.getItem(COUNTRY_STORAGE_KEY) as CountryCode;
-      if (savedCountry) {
-        setSelectedCountryState(savedCountry);
+      if (savedCountry) setSelectedCountryState(savedCountry);
+    } catch {}
+
+    // 2. Instant offline fallback: show cached data immediately while Firestore connects
+    try {
+      const localSaved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (localSaved) {
+        const parsed: Lesson[] = JSON.parse(localSaved);
+        if (Array.isArray(parsed) && parsed.length > 0) setLessons(parsed);
+      }
+    } catch {}
+    try {
+      const localQuizzes = localStorage.getItem(QUIZZES_STORAGE_KEY);
+      if (localQuizzes) {
+        const parsedQ: Quiz[] = JSON.parse(localQuizzes);
+        if (Array.isArray(parsedQ) && parsedQ.length > 0) setQuizzes(parsedQ);
       }
     } catch {}
 
-    const loadStoredData = async () => {
-      let combinedLessons = [...INITIAL_LESSONS];
-      let combinedQuizzes = [...STANDALONE_QUIZZES];
-
-      // 2. Load Lessons from LocalStorage & merge new initial lessons
-      try {
-        const localSaved = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (localSaved) {
-          const parsed: Lesson[] = JSON.parse(localSaved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const initialMap = new Map(INITIAL_LESSONS.map(l => [l.id, l]));
-            combinedLessons = parsed.map(p => {
-              if (initialMap.has(p.id)) {
-                const init = initialMap.get(p.id)!;
-                return {
-                  ...p,
-                  country: init.country,
-                  stage: init.stage,
-                  gradeNumber: init.gradeNumber,
-                  subjectId: init.subjectId,
-                  subjectName: init.subjectName,
-                  unitTitle: init.unitTitle,
-                };
-              }
-              return p;
-            });
-            const currentIds = new Set(combinedLessons.map(c => c.id));
-            for (const init of INITIAL_LESSONS) {
-              if (!currentIds.has(init.id)) {
-                combinedLessons.push(init);
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('LocalStorage lessons read error:', err);
-      }
-
-      // 3. Load Quizzes from LocalStorage & merge new initial quizzes
-      try {
-        const localQuizzes = localStorage.getItem(QUIZZES_STORAGE_KEY);
-        if (localQuizzes) {
-          const parsedQ: Quiz[] = JSON.parse(localQuizzes);
-          if (Array.isArray(parsedQ) && parsedQ.length > 0) {
-            const parsedQIds = new Set(parsedQ.map(q => q.id));
-            combinedQuizzes = [
-              ...parsedQ,
-              ...STANDALONE_QUIZZES.filter(init => !parsedQIds.has(init.id))
-            ];
-          }
-        }
-      } catch (err) {
-        console.warn('LocalStorage quizzes read error:', err);
-      }
-
-      // 4. Try Loading from Firestore
-      if (db) {
-        try {
-          // Lessons
-          const snapshot = await getDocs(collection(db, 'lessons'));
-          if (!snapshot.empty) {
-            const firestoreLessons: Lesson[] = [];
-            snapshot.forEach((docSnap) => {
-              firestoreLessons.push(docSnap.data() as Lesson);
-            });
-            const initialMap = new Map(INITIAL_LESSONS.map(l => [l.id, l]));
-            const mappedFirestore = firestoreLessons.map(fl => {
-              if (initialMap.has(fl.id)) {
-                const init = initialMap.get(fl.id)!;
-                return {
-                  ...fl,
-                  country: init.country,
-                  stage: init.stage,
-                  gradeNumber: init.gradeNumber,
-                  subjectId: init.subjectId,
-                  subjectName: init.subjectName,
-                  unitTitle: init.unitTitle,
-                };
-              }
-              return fl;
-            });
-            const ids = new Set(mappedFirestore.map(l => l.id));
-            combinedLessons = [
-              ...mappedFirestore,
-              ...combinedLessons.filter(l => !ids.has(l.id))
-            ];
-          }
-
-          // Quizzes
-          const quizSnapshot = await getDocs(collection(db, 'quizzes'));
-          if (!quizSnapshot.empty) {
-            const firestoreQuizzes: Quiz[] = [];
-            quizSnapshot.forEach((docSnap) => {
-              firestoreQuizzes.push(docSnap.data() as Quiz);
-            });
-            const qIds = new Set(firestoreQuizzes.map(q => q.id));
-            combinedQuizzes = [
-              ...firestoreQuizzes,
-              ...combinedQuizzes.filter(q => !qIds.has(q.id))
-            ];
-          }
-        } catch (error) {
-          // Firestore offline fallback
-        }
-      }
-
-      setLessons(combinedLessons);
-      setQuizzes(combinedQuizzes);
-
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(combinedLessons));
-        localStorage.setItem(QUIZZES_STORAGE_KEY, JSON.stringify(combinedQuizzes));
-      } catch {}
-
+    if (!db) {
       setLoading(false);
-    };
+      return;
+    }
 
-    loadStoredData();
+    const initialMap = new Map(INITIAL_LESSONS.map(l => [l.id, l]));
+
+    // 3. Real-time Firestore listener for lessons (authoritative single source of truth)
+    const unsubLessons = onSnapshot(
+      collection(db, 'lessons'),
+      (snapshot) => {
+        const firestoreLessons: Lesson[] = [];
+        snapshot.forEach((docSnap) => firestoreLessons.push(docSnap.data() as Lesson));
+
+        // Preserve classification fields from INITIAL_LESSONS for static lessons
+        const mappedFirestore = firestoreLessons.map(fl => {
+          if (initialMap.has(fl.id)) {
+            const init = initialMap.get(fl.id)!;
+            return {
+              ...fl,
+              country: init.country,
+              stage: init.stage,
+              gradeNumber: init.gradeNumber,
+              subjectId: init.subjectId,
+              subjectName: init.subjectName,
+              unitTitle: init.unitTitle,
+            };
+          }
+          return fl;
+        });
+
+        // Add any INITIAL_LESSONS not yet in Firestore (new static content)
+        const fsIds = new Set(mappedFirestore.map(l => l.id));
+        const missingInitial = INITIAL_LESSONS.filter(l => !fsIds.has(l.id));
+        const combinedLessons = [...mappedFirestore, ...missingInitial];
+
+        setLessons(combinedLessons);
+        // Update localStorage cache so offline mode shows latest data
+        try { localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(combinedLessons)); } catch {}
+        setLoading(false);
+      },
+      (error) => {
+        console.warn('Firestore lessons listener error, using offline cache:', error);
+        setLoading(false);
+      }
+    );
+
+    // 4. Real-time Firestore listener for quizzes (authoritative single source of truth)
+    const unsubQuizzes = onSnapshot(
+      collection(db, 'quizzes'),
+      (snapshot) => {
+        const firestoreQuizzes: Quiz[] = [];
+        snapshot.forEach((docSnap) => firestoreQuizzes.push(docSnap.data() as Quiz));
+
+        const qIds = new Set(firestoreQuizzes.map(q => q.id));
+        const combinedQuizzes = [
+          ...firestoreQuizzes,
+          ...STANDALONE_QUIZZES.filter(init => !qIds.has(init.id)),
+        ];
+
+        setQuizzes(combinedQuizzes);
+        try { localStorage.setItem(QUIZZES_STORAGE_KEY, JSON.stringify(combinedQuizzes)); } catch {}
+      },
+      (error) => {
+        console.warn('Firestore quizzes listener error, using offline cache:', error);
+      }
+    );
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
-        try { setLessons(JSON.parse(e.newValue)); } catch {}
-      }
-      if (e.key === QUIZZES_STORAGE_KEY && e.newValue) {
-        try { setQuizzes(JSON.parse(e.newValue)); } catch {}
-      }
       if (e.key === COUNTRY_STORAGE_KEY && e.newValue) {
         setSelectedCountryState(e.newValue as CountryCode);
       }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+
+    return () => {
+      unsubLessons();
+      unsubQuizzes();
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   const persistLessons = async (updatedLessons: Lesson[]) => {
