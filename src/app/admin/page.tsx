@@ -332,10 +332,15 @@ export default function AdminDashboardPage() {
 
   // --- Handlers for Lessons ---
   const handleOpenAddLesson = () => {
-    const defaultCountry: CountryCode = adminCountry === 'all' ? 'eg' : adminCountry;
-    const stages = getStagesForCountry(defaultCountry);
-    const subjects = getSubjectsForCountry(defaultCountry, stages[0]?.id);
+    const targetCountry: CountryCode = (isModerator && profile?.assignedCountry) 
+      ? profile.assignedCountry 
+      : (adminCountry === 'all' ? 'sa' : adminCountry);
+    const stages = getStagesForCountry(targetCountry);
+    const subjects = getSubjectsForCountry(targetCountry, stages[0]?.id, 1);
     
+    const authorEmail = profile?.email || user?.email || 'المشرف';
+    const authorName = profile?.displayName || (isModerator ? 'مشرف المنهج' : 'المشرف العام');
+
     setEditingLesson({
       id: `lesson_${Date.now()}`,
       title: '',
@@ -344,7 +349,7 @@ export default function AdminDashboardPage() {
       gradeNumber: 1,
       subjectId: subjects[0]?.id || 'physics-sec',
       subjectName: subjects[0]?.name || 'الفيزياء',
-      country: defaultCountry,
+      country: targetCountry,
       term: 1,
       unitTitle: 'الوحدة الأولى',
       youtubeUrl: '',
@@ -355,6 +360,8 @@ export default function AdminDashboardPage() {
       pdfTitle: '',
       viewsCount: 100,
       likesCount: 15,
+      createdBy: authorEmail,
+      createdByName: authorName,
       createdAt: new Date().toISOString(),
     });
     setIsLessonModalOpen(true);
@@ -365,9 +372,15 @@ export default function AdminDashboardPage() {
     if (!editingLesson || !editingLesson.title) return;
 
     const ytId = extractYouTubeId(editingLesson.youtubeUrl || '') || editingLesson.youtubeId || 'hHAHtNUyHPM';
-    const targetCountry = editingLesson.country || (adminCountry === 'all' ? 'eg' : adminCountry);
-    const subObj = getSubjectsForCountry(targetCountry, editingLesson.stage).find(s => s.id === editingLesson.subjectId);
+    const targetCountry: CountryCode = (isModerator && profile?.assignedCountry)
+      ? profile.assignedCountry
+      : (editingLesson.country || (adminCountry === 'all' ? 'sa' : adminCountry));
+      
+    const subObj = getSubjectsForCountry(targetCountry, editingLesson.stage, Number(editingLesson.gradeNumber) || 1).find(s => s.id === editingLesson.subjectId);
     const subjectName = subObj ? subObj.name : (editingLesson.subjectName || 'عام');
+
+    const authorEmail = profile?.email || user?.email || 'المشرف';
+    const authorName = profile?.displayName || (isModerator ? 'مشرف المنهج' : 'المشرف العام');
 
     const fullLesson: Lesson = {
       id: editingLesson.id || `lesson_${Date.now()}`,
@@ -388,7 +401,12 @@ export default function AdminDashboardPage() {
       pdfTitle: editingLesson.pdfTitle,
       viewsCount: editingLesson.viewsCount || 50,
       likesCount: editingLesson.likesCount || 5,
+      createdBy: editingLesson.createdBy || authorEmail,
+      createdByName: editingLesson.createdByName || authorName,
+      updatedBy: authorEmail,
+      updatedByName: authorName,
       createdAt: editingLesson.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const exists = lessons.some(l => l.id === fullLesson.id);
@@ -1371,30 +1389,37 @@ export default function AdminDashboardPage() {
                 <div className="rounded-2xl border border-primary-100 dark:border-slate-800 bg-primary-50/30 dark:bg-slate-800/30 p-4">
                   <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1.5">
                     <Globe2 className="h-4 w-4 text-primary-600 dark:text-gold-400" />
-                    <span>اختر الدولة والمنهج التعليمي:</span>
+                    <span>الدولة والمنهج التعليمي:</span>
                   </label>
-                  <select
-                    value={editingLesson.country || 'eg'}
-                    onChange={(e) => {
-                      const c = e.target.value as CountryCode;
-                      const stages = getStagesForCountry(c);
-                      const subjs = getSubjectsForCountry(c, stages[0]?.id);
-                      setEditingLesson({
-                        ...editingLesson,
-                        country: c,
-                        stage: stages[0]?.id || 'secondary',
-                        subjectId: subjs[0]?.id || 'physics-sec',
-                        subjectName: subjs[0]?.name || 'الفيزياء',
-                      });
-                    }}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs font-bold text-slate-900 dark:text-white shadow-xs"
-                  >
-                    {ARAB_COUNTRIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.flag} {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  {isModerator && profile?.assignedCountry ? (
+                    <div className="flex items-center gap-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 p-3 text-xs font-black text-indigo-900 dark:text-indigo-200">
+                      <span className="text-xl">{ARAB_COUNTRIES.find(c => c.code === profile.assignedCountry)?.flag}</span>
+                      <span>منهج {ARAB_COUNTRIES.find(c => c.code === profile.assignedCountry)?.name} (مخصص لإشرافك)</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={editingLesson.country || 'sa'}
+                      onChange={(e) => {
+                        const c = e.target.value as CountryCode;
+                        const stages = getStagesForCountry(c);
+                        const subjs = getSubjectsForCountry(c, stages[0]?.id, Number(editingLesson.gradeNumber) || 1);
+                        setEditingLesson({
+                          ...editingLesson,
+                          country: c,
+                          stage: stages[0]?.id || 'secondary',
+                          subjectId: subjs[0]?.id || 'physics-sec',
+                          subjectName: subjs[0]?.name || 'الفيزياء',
+                        });
+                      }}
+                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs font-bold text-slate-900 dark:text-white shadow-xs"
+                    >
+                      {ARAB_COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.flag} {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* 2. Stage & Grade & Subject Grid */}

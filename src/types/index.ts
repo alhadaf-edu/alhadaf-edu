@@ -1,4 +1,4 @@
-﻿export type CountryCode = 'sa' | 'eg' | 'ae' | 'kw' | 'jo' | 'qa' | 'om' | 'general';
+export type CountryCode = 'sa' | 'eg' | 'ae' | 'kw' | 'jo' | 'qa' | 'om' | 'general';
 
 export interface CountryInfo {
   code: CountryCode;
@@ -120,6 +120,10 @@ export interface Lesson {
   viewsCount: number;
   likesCount: number;
   featured?: boolean;
+  createdBy?: string;
+  createdByName?: string;
+  updatedBy?: string;
+  updatedByName?: string;
   createdAt: string;
   updatedAt?: string;
 }
