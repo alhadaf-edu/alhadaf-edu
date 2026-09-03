@@ -888,13 +888,20 @@ export default function AdminDashboardPage() {
               </a>
             </div>
 
+            {syncMessage && (
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-2.5 animate-fade-in shadow-xs">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span className="leading-relaxed">{syncMessage}</span>
+              </div>
+            )}
+
             <button
               onClick={handleSyncYouTube}
               disabled={syncing}
               className="flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-6 py-3 text-xs font-bold shadow transition-all disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              <span>{syncing ? 'جاري فحص وتحديث الدروس...' : 'بدء المزامنة الآن'}</span>
+              <span>{syncing ? 'جاري فحص ومزامنة الفيديوهات وقوائم التشغيل...' : 'بدء المزامنة وحفظ التحديثات الآن'}</span>
             </button>
           </div>
         )}

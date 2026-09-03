@@ -83,8 +83,6 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const initialMap = new Map(INITIAL_LESSONS.map(l => [l.id, l]));
-
     // 3. Real-time Firestore listener for lessons (authoritative single source of truth)
     const unsubLessons = onSnapshot(
       collection(db, 'lessons'),
@@ -92,27 +90,10 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
         const firestoreLessons: Lesson[] = [];
         snapshot.forEach((docSnap) => firestoreLessons.push(docSnap.data() as Lesson));
 
-        // Preserve classification fields from INITIAL_LESSONS for static lessons
-        const mappedFirestore = firestoreLessons.map(fl => {
-          if (initialMap.has(fl.id)) {
-            const init = initialMap.get(fl.id)!;
-            return {
-              ...fl,
-              country: init.country,
-              stage: init.stage,
-              gradeNumber: init.gradeNumber,
-              subjectId: init.subjectId,
-              subjectName: init.subjectName,
-              unitTitle: init.unitTitle,
-            };
-          }
-          return fl;
-        });
-
         // Add any INITIAL_LESSONS not yet in Firestore (new static content)
-        const fsIds = new Set(mappedFirestore.map(l => l.id));
+        const fsIds = new Set(firestoreLessons.map(l => l.id));
         const missingInitial = INITIAL_LESSONS.filter(l => !fsIds.has(l.id));
-        const combinedLessons = [...mappedFirestore, ...missingInitial];
+        const combinedLessons = [...firestoreLessons, ...missingInitial];
 
         setLessons(combinedLessons);
         // Update localStorage cache so offline mode shows latest data
@@ -287,10 +268,12 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
     return quizzes.find(q => q.id === id);
   };
 
-  // Smart sync from YouTube channel (blazing fast via server endpoint + parallel Firestore writes)
+  // Comprehensive sync from YouTube channel
   const syncWithYouTube = async (): Promise<{ success: boolean; count: number; message: string }> => {
     try {
       let channelVideos: YouTubeVideo[] = [];
+      let playlistsCount = 0;
+
       try {
         const res = await fetch('/api/youtube/sync', { cache: 'no-store' });
         if (res.ok) {
@@ -298,13 +281,16 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
           if (data.videos && Array.isArray(data.videos)) {
             channelVideos = data.videos;
           }
+          if (typeof data.playlistsCount === 'number') {
+            playlistsCount = data.playlistsCount;
+          }
         }
       } catch (e) {
         console.warn('API sync fallback to direct client parser', e);
       }
 
       if (channelVideos.length === 0) {
-        channelVideos = await fetchChannelVideos(35);
+        channelVideos = await fetchChannelVideos(50);
       }
 
       if (!channelVideos || channelVideos.length === 0) {
@@ -321,7 +307,7 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
         const parsed = parseVideoTitleToCurriculum(video.title, video.description);
 
         if (existingIdx >= 0) {
-          // Re-classify and update existing lesson
+          // Re-classify and update existing lesson with latest video metadata
           const existing = currentList[existingIdx];
           const updatedLesson: Lesson = {
             ...existing,
@@ -334,6 +320,7 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
             subjectName: parsed.subjectName,
             unitTitle: parsed.unitTitle,
             thumbnailUrl: video.thumbnailUrl || existing.thumbnailUrl,
+            updatedAt: new Date().toISOString(),
           };
           currentList[existingIdx] = updatedLesson;
           lessonsToPersist.push(updatedLesson);
@@ -366,9 +353,10 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // 1. Immediately persist to localStorage for instant UI refresh
       await persistLessons(currentList);
 
-      // Parallel async Firestore save
+      // 2. Persist to Firestore in parallel so it never reverts on reload or for other users
       if (db && lessonsToPersist.length > 0) {
         try {
           await Promise.allSettled(
@@ -380,12 +368,12 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
       }
 
       const totalEffect = addedCount + updatedCount;
+      const playlistMsg = playlistsCount > 0 ? ` ومزامنة ${playlistsCount} قائمة تشغيل` : '';
+
       return {
         success: true,
         count: totalEffect,
-        message: totalEffect > 0 
-          ? `تمت المزامنة بنجاح! تم تحديث وتصنيف ${totalEffect} درس وحفظها في قاعدة البيانات.` 
-          : 'كافة دروس القناة الحالية متزامنة ومصنفة بالكامل.'
+        message: `✅ تمت المزامنة والحفظ بنجاح! تم فحص ومزامنة ${channelVideos.length} فيديو، وحفظ ${addedCount} درس جديد و${updatedCount} درس محدث في قاعدة البيانات${playlistMsg}.`
       };
     } catch (err: any) {
       return { success: false, count: 0, message: err.message || 'حدث خطأ أثناء المزامنة.' };
