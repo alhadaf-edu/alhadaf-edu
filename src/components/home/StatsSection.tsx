@@ -89,18 +89,18 @@ export default function StatsSection() {
           return (
             <div
               key={idx}
-              className="flex flex-col items-center sm:items-start p-5 sm:p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-xl shadow-slate-200/40 dark:shadow-none hover:-translate-y-1 transition-all duration-300"
+              className="flex flex-col items-center sm:items-start p-5 sm:p-6 rounded-3xl border border-[#E0E3FD] dark:border-[#373261] bg-white dark:bg-[#242045] backdrop-blur-xl shadow-tiqdr hover:shadow-tiqdr-hover hover:-translate-y-1 transition-all duration-300"
             >
               <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${stat.bg} ${stat.color} mb-3 shadow-inner`}>
                 <Icon className="h-6 w-6" />
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-heading">
+              <div className="text-2xl sm:text-3xl font-black text-[#2A254D] dark:text-white font-heading">
                 {stat.value}
               </div>
-              <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 mt-0.5">
+              <div className="text-xs sm:text-sm font-bold text-[#2A254D] dark:text-[#d0d5f9] mt-0.5">
                 {stat.label}
               </div>
-              <div className="text-[11px] text-slate-400 mt-0.5 text-center sm:text-right">
+              <div className="text-[11px] text-[#697585] dark:text-[#B3ADE1] mt-0.5 text-center sm:text-right">
                 {stat.desc}
               </div>
             </div>

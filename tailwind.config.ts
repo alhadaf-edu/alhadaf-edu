@@ -11,17 +11,40 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          50: "#f0f6ff",
-          100: "#e0edfe",
-          200: "#bae0fd",
-          300: "#7cc8fb",
-          400: "#36abf6",
-          500: "#1e3a5f", // Royal Deep Blue
-          600: "#162d4a",
-          700: "#12243b",
-          800: "#0e1a2c",
-          900: "#09121f",
-          950: "#050b14",
+          50: "#f3f4fd",
+          100: "#e5e8fb",
+          200: "#d0d5f9",
+          300: "#aab5f5",
+          400: "#7c8bee",
+          500: "#4f5de4", // tiqdr base indigo blue
+          600: "#3d49cb",
+          700: "#3139a5",
+          800: "#2a2f85",
+          900: "#262b6d",
+          950: "#171a43",
+        },
+        secondary: {
+          50: "#fff7ed",
+          100: "#ffeed5",
+          200: "#fed7aa",
+          300: "#fdb974",
+          400: "#fb923c",
+          500: "#f57005", // tiqdr vibrant orange
+          600: "#ea580c",
+          700: "#c2410c",
+          800: "#9a3412",
+          900: "#7c2d12",
+        },
+        tiqdr: {
+          base: "#4F5DE4",
+          secondary: "#F57005",
+          black: "#2A254D",
+          text: "#697585",
+          text2: "#B3ADE1",
+          soft: "#F1F2FD",
+          soft2: "#F6F5F5",
+          soft3: "#E0E3FD",
+          soft4: "#E4E4E4",
         },
         gold: {
           50: "#fffbeb",
@@ -29,36 +52,37 @@ const config: Config = {
           200: "#fde68a",
           300: "#fcd34d",
           400: "#fbbf24",
-          500: "#f59e0b", // Rich Amber Gold
-          600: "#d97706",
-          700: "#b45309",
-          800: "#92400e",
-          900: "#78350f",
+          500: "#f57005", // map gold to tiqdr vibrant secondary
+          600: "#ea580c",
+          700: "#c2410c",
+          800: "#9a3412",
+          900: "#7c2d12",
         },
         saudi: {
           green: "#006C35",
-          gold: "#D4AF37",
-          navy: "#1e3a5f",
-          dark: "#0a1128"
+          gold: "#F57005",
+          navy: "#2A254D",
+          dark: "#1A1736"
         },
         surface: {
           light: "#ffffff",
-          dark: "#0f172a",
-          cardDark: "#1e293b",
-          borderDark: "#334155"
+          dark: "#1A1736",
+          cardDark: "#242045",
+          borderDark: "#373261"
         }
       },
       fontFamily: {
-        sans: ["var(--font-cairo)", "Cairo", "Tajawal", "system-ui", "sans-serif"],
-        heading: ["var(--font-tajawal)", "Tajawal", "Cairo", "system-ui", "sans-serif"],
+        sans: ["var(--font-noto-kufi)", "Noto Kufi Arabic", "Cairo", "system-ui", "sans-serif"],
+        heading: ["var(--font-noto-kufi)", "Noto Kufi Arabic", "Tajawal", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        'glow': '0 0 25px -5px rgba(245, 158, 11, 0.25)',
-        'glow-primary': '0 0 25px -5px rgba(30, 58, 95, 0.35)',
+        'glow': '0 0 25px -5px rgba(245, 112, 5, 0.25)',
+        'glow-primary': '0 0 25px -5px rgba(79, 93, 228, 0.35)',
+        'tiqdr': '0 10px 30px 0 rgba(79, 93, 228, 0.08)',
+        'tiqdr-hover': '0 15px 35px 0 rgba(79, 93, 228, 0.15)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'islamic-pattern': "radial-gradient(#f59e0b 0.75px, transparent 0.75px), radial-gradient(#1e3a5f 0.75px, #f8fafc 0.75px)",
       }
     },
   },

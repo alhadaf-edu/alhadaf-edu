@@ -46,11 +46,10 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-primary-950 via-primary-900 to-slate-950 text-white pt-12 pb-20 lg:pt-18 lg:pb-28">
-      {/* Background Decorative Islamic Patterns */}
-      <IslamicPattern variant="stars" opacity={0.06} className="text-white" />
-      <div className="absolute top-1/4 -right-48 h-96 w-96 rounded-full bg-gold-500/15 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 -left-48 h-96 w-96 rounded-full bg-primary-400/20 blur-3xl pointer-events-none" />
+    <section className="relative overflow-hidden bg-gradient-to-b from-[#1A1736] via-[#242045] to-[#2A254D] text-white pt-12 pb-20 lg:pt-18 lg:pb-28">
+      {/* Soft Glow Orbs */}
+      <div className="absolute top-1/4 -right-48 h-96 w-96 rounded-full bg-[#F57005]/15 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 -left-48 h-96 w-96 rounded-full bg-[#4F5DE4]/25 blur-3xl pointer-events-none" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -59,20 +58,20 @@ export default function HeroSection() {
           <div className="lg:col-span-7 space-y-6 text-center lg:text-right">
             
             {/* Top Badge with Flag & Country */}
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-gold-400/30 bg-gold-500/10 px-4 py-1.5 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-[#4F5DE4]/40 bg-[#4F5DE4]/15 px-4 py-1.5 backdrop-blur-md">
               <span className="text-lg leading-none">{countryInfo.flag}</span>
-              <span className="text-xs sm:text-sm font-bold text-gold-300">
-                منصة الهَدَّاف التعليمية الرسمية لمناهج {countryInfo.name}
+              <span className="text-xs sm:text-sm font-bold text-[#E0E3FD]">
+                منصة الهَدَّاف التعليمية الرسمية لمناهج {countryInfo.name}
               </span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-heading tracking-tight leading-[1.2] text-white">
-              طريقك نحو <span className="text-transparent bg-clip-text bg-gradient-to-l from-gold-300 via-gold-400 to-amber-200">القمة والدرجات الكاملة</span> في دراستك
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-heading tracking-tight leading-[1.25] text-white">
+              طريقك نحو <span className="text-transparent bg-clip-text bg-gradient-to-l from-[#F57005] via-[#fb923c] to-[#fde68a]">القمة والدرجات الكاملة</span> في دراستك
             </h1>
 
             {/* Description */}
-            <p className="text-sm sm:text-lg text-slate-200 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-normal">
+            <p className="text-sm sm:text-lg text-[#d0d5f9] leading-relaxed max-w-2xl mx-auto lg:mx-0 font-normal">
               {countryInfo.description}. شروحات فيديو مميزة، مذكرات وملخصات PDF جاهزة للتحميل، واختبارات تقييمية ذكية لكل المراحل.
             </p>
 
@@ -83,11 +82,11 @@ export default function HeroSection() {
                 <span>مواكبة لمناهج {countryInfo.flag} المعتمدة</span>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <CheckCircle2 className="h-4 w-4 text-gold-400 shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-[#F57005] shrink-0" />
                 <span>شروحات فيديو تفاعلية</span>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <CheckCircle2 className="h-4 w-4 text-sky-400 shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-[#7c8bee] shrink-0" />
                 <span>بنك أسئلة واختبارات</span>
               </div>
             </div>
@@ -96,7 +95,7 @@ export default function HeroSection() {
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-4">
               <Link
                 href="/curriculum"
-                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-600 hover:to-amber-600 text-slate-950 px-7 py-3.5 text-sm font-black shadow-lg shadow-gold-500/20 transition-all hover:scale-105"
+                className="flex items-center gap-2 rounded-2xl bg-[#4F5DE4] hover:bg-[#3d49cb] text-white px-7 py-3.5 text-sm font-black shadow-lg shadow-[#4F5DE4]/30 transition-all hover:scale-105"
               >
                 <BookOpen className="h-4 w-4" />
                 <span>تصفح دروس {countryInfo.name}</span>
@@ -105,9 +104,9 @@ export default function HeroSection() {
 
               <Link
                 href="/quizzes"
-                className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 hover:bg-white/20 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md transition-all hover:scale-105"
+                className="flex items-center gap-2 rounded-2xl border border-[#F57005]/40 bg-[#F57005]/15 hover:bg-[#F57005]/25 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-md transition-all hover:scale-105"
               >
-                <Award className="h-4 w-4 text-gold-400" />
+                <Award className="h-4 w-4 text-[#F57005]" />
                 <span>تحدي الاختبارات التقييمية</span>
               </Link>
             </div>
@@ -115,18 +114,18 @@ export default function HeroSection() {
 
           {/* Quick Navigator Box */}
           <div className="lg:col-span-5">
-            <div className="relative rounded-3xl border border-white/15 bg-white/10 p-6 sm:p-8 backdrop-blur-xl shadow-2xl shadow-black/40">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+            <div className="relative rounded-3xl border border-[#4F5DE4]/30 bg-[#242045]/90 p-6 sm:p-8 backdrop-blur-xl shadow-2xl shadow-black/50">
+              <div className="flex items-center justify-between border-b border-[#4F5DE4]/20 pb-4 mb-6">
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-gold-400" />
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2 font-heading">
+                    <TrendingUp className="h-5 w-5 text-[#F57005]" />
                     <span>الانتقال السريع لدروسك</span>
                   </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">
+                  <p className="text-xs text-[#B3ADE1] mt-0.5">
                     اختر مرحلتك ومادتك في مناهج {countryInfo.name}
                   </p>
                 </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold-500/20 text-gold-400">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#4F5DE4]/20 text-[#7c8bee]">
                   <PlayCircle className="h-5 w-5" />
                 </div>
               </div>
@@ -149,8 +148,8 @@ export default function HeroSection() {
                         }}
                         className={`rounded-xl py-2 px-1 text-center text-xs font-bold transition-all ${
                           selectedStage === st.id
-                            ? 'bg-gold-500 text-slate-950 font-black shadow-md'
-                            : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                            ? 'bg-[#F57005] text-white font-black shadow-md'
+                            : 'bg-[#1A1736]/70 text-[#E0E3FD] hover:bg-[#1A1736]'
                         }`}
                       >
                         {st.name.replace('المرحلة ', '')}
@@ -167,10 +166,10 @@ export default function HeroSection() {
                   <select
                     value={selectedGrade}
                     onChange={(e) => setSelectedGrade(e.target.value)}
-                    className="w-full rounded-xl border border-white/20 bg-slate-900/90 py-2.5 px-3 text-xs font-bold text-white focus:border-gold-400 focus:outline-none"
+                    className="w-full rounded-xl border border-[#4F5DE4]/40 bg-[#1A1736] py-2.5 px-3 text-xs font-bold text-white focus:border-[#F57005] focus:outline-none"
                   >
                     {filteredGrades.map((g) => (
-                      <option key={g.id} value={g.gradeNumber} className="bg-slate-900 text-white">
+                      <option key={g.id} value={g.gradeNumber} className="bg-[#1A1736] text-white">
                         {g.name}
                       </option>
                     ))}
@@ -185,11 +184,11 @@ export default function HeroSection() {
                   <select
                     value={selectedSubject}
                     onChange={(e) => setSelectedSubject(e.target.value)}
-                    className="w-full rounded-xl border border-white/20 bg-slate-900/90 py-2.5 px-3 text-xs font-bold text-white focus:border-gold-400 focus:outline-none"
+                    className="w-full rounded-xl border border-[#4F5DE4]/40 bg-[#1A1736] py-2.5 px-3 text-xs font-bold text-white focus:border-[#F57005] focus:outline-none"
                   >
-                    <option value="" className="bg-slate-900 text-white">جميع المواد المتاحة</option>
+                    <option value="" className="bg-[#1A1736] text-white">جميع المواد المتاحة</option>
                     {filteredSubjects.map((sub) => (
-                      <option key={sub.id} value={sub.id} className="bg-slate-900 text-white">
+                      <option key={sub.id} value={sub.id} className="bg-[#1A1736] text-white">
                         {sub.name}
                       </option>
                     ))}
@@ -198,7 +197,7 @@ export default function HeroSection() {
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-600 hover:to-amber-600 text-slate-950 py-3 text-xs font-black shadow-lg transition-all hover:scale-[1.02]"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#F57005] hover:bg-[#ea580c] text-white py-3 text-xs font-black shadow-lg shadow-[#F57005]/25 transition-all hover:scale-[1.02]"
                 >
                   <span>عرض الدروس الآن</span>
                   <ArrowLeft className="h-4 w-4" />

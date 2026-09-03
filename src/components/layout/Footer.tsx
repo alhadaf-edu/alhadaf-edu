@@ -31,18 +31,16 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative mt-20 border-t border-slate-200 dark:border-slate-800 bg-slate-900 text-slate-300 overflow-hidden">
-      <IslamicPattern variant="subtle" opacity={0.04} />
-
+    <footer className="relative mt-20 border-t border-[#E0E3FD] dark:border-[#373261] bg-[#1A1736] text-[#B3ADE1] overflow-hidden">
       {/* Footer Top: Newsletter Banner */}
-      <div className="relative border-b border-slate-800 bg-slate-950/60 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="relative border-b border-[#242045] bg-[#242045]/80 py-10 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-right max-w-xl">
-            <h3 className="text-xl sm:text-2xl font-black text-white flex items-center justify-center md:justify-start gap-2">
-              <Sparkles className="h-6 w-6 text-gold-400" />
+            <h3 className="text-xl sm:text-2xl font-black text-white flex items-center justify-center md:justify-start gap-2 font-heading">
+              <Sparkles className="h-6 w-6 text-[#F57005]" />
               <span>اشترك في نشرة "الْهَدَّاف" التعليمية</span>
             </h3>
-            <p className="mt-1.5 text-xs sm:text-sm text-slate-400 leading-relaxed">
+            <p className="mt-1.5 text-xs sm:text-sm text-[#d0d5f9] leading-relaxed">
               احصل على ملخصات الدروس، نماذج الاختبارات، وتجميعات التحصيلي والقدرات فور صدورها مباشرة إلى بريدك الإلكتروني.
             </p>
           </div>
@@ -55,11 +53,11 @@ export default function Footer() {
                 placeholder="أدخل بريدك الإلكتروني..."
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/90 py-3 pr-4 pl-28 text-xs sm:text-sm text-white placeholder-slate-500 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+                className="w-full rounded-2xl border border-[#4F5DE4]/30 bg-[#1A1736] py-3 pr-4 pl-28 text-xs sm:text-sm text-white placeholder-[#697585] focus:border-[#F57005] focus:outline-none focus:ring-1 focus:ring-[#F57005]"
               />
               <button
                 type="submit"
-                className="absolute left-1.5 flex items-center gap-1.5 rounded-xl bg-gold-500 hover:bg-gold-600 text-slate-950 px-4 py-2 text-xs font-bold transition-all shadow-md"
+                className="absolute left-1.5 flex items-center gap-1.5 rounded-xl bg-[#F57005] hover:bg-[#ea580c] text-white px-4 py-2 text-xs font-bold transition-all shadow-md"
               >
                 <span>اشتراك</span>
                 <Send className="h-3.5 w-3.5" />
@@ -82,7 +80,7 @@ export default function Footer() {
           {/* Column 1: Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-gold-500/40 bg-slate-950 p-1 shadow-glow">
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#4F5DE4]/40 bg-[#242045] p-1 shadow-sm">
                 <Image
                   src="/logo.png"
                   alt="شعار منصة الهَدَّاف"
@@ -95,13 +93,13 @@ export default function Footer() {
                 <span className="text-2xl font-black text-white font-heading">
                   الهَدَّاف
                 </span>
-                <span className="rounded-md bg-gold-500/15 px-2 py-0.5 text-xs font-black text-gold-400 border border-gold-500/30">
+                <span className="rounded-lg bg-[#4F5DE4]/20 text-[#aab5f5] px-2 py-0.5 text-xs font-black border border-[#4F5DE4]/30">
                   التعليمي
                 </span>
               </div>
             </div>
 
-            <p className="text-xs sm:text-sm leading-relaxed text-slate-400">
+            <p className="text-xs sm:text-sm leading-relaxed text-[#B3ADE1]">
               المنصة الرائدة في تقديم الشروحات المرئية والملخصات والاختبارات التفاعلية للمناهج الدراسية الرسمية في الوطن العربي (مصر، السعودية، الإمارات، الكويت، الأردن، وغيرها)، مساندين للطلاب في تحقيق التميز والدرجات الكاملة.
             </p>
 

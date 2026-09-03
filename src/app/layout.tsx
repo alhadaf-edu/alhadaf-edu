@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Cairo, Tajawal } from 'next/font/google';
+import { Noto_Kufi_Arabic, Cairo } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -8,18 +8,18 @@ import { LessonsProvider } from '@/context/LessonsContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
-const cairo = Cairo({
+const notoKufi = Noto_Kufi_Arabic({
   subsets: ['arabic', 'latin'],
-  variable: '--font-cairo',
+  variable: '--font-noto-kufi',
   display: 'swap',
   weight: ['300', '400', '500', '600', '700', '800', '900'],
 });
 
-const tajawal = Tajawal({
+const cairo = Cairo({
   subsets: ['arabic', 'latin'],
-  variable: '--font-tajawal',
+  variable: '--font-cairo',
   display: 'swap',
-  weight: ['300', '400', '500', '700', '800', '900'],
+  weight: ['400', '600', '700', '800'],
 });
 
 export const metadata: Metadata = {
@@ -95,7 +95,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="ar" dir="rtl" className={`${cairo.variable} ${tajawal.variable}`} suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className={`${notoKufi.variable} ${cairo.variable}`} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
