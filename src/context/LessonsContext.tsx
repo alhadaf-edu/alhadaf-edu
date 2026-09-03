@@ -56,10 +56,15 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize: real-time Firestore listeners (single source of truth)
   useEffect(() => {
-    // 1. Country initialization from localStorage
+    // 1. Country and Sync Mode initialization from localStorage
     try {
       const savedCountry = localStorage.getItem(COUNTRY_STORAGE_KEY) as CountryCode;
       if (savedCountry) setSelectedCountryState(savedCountry);
+    } catch {}
+
+    try {
+      const savedSyncMode = localStorage.getItem(SYNC_MODE_STORAGE_KEY) as 'auto' | 'manual';
+      if (savedSyncMode) setSyncModeState(savedSyncMode);
     } catch {}
 
     // 2. Instant offline fallback: show cached data immediately while Firestore connects

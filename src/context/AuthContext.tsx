@@ -8,7 +8,10 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut as firebaseSignOut,
-  updateProfile
+  updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { auth, googleProvider, db } from '@/lib/firebase';
@@ -21,8 +24,8 @@ interface AuthContextType {
   isModerator: boolean;
   loading: boolean;
   needsCurriculumSelection: boolean;
-  loginWithGoogle: () => Promise<void>;
-  loginWithEmail: (email: string, pass: string) => Promise<void>;
+  loginWithGoogle: (rememberMe?: boolean) => Promise<void>;
+  loginWithEmail: (email: string, pass: string, rememberMe?: boolean) => Promise<void>;
   registerWithEmail: (
     name: string, 
     email: string, 
@@ -173,8 +176,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (rememberMe: boolean = true) => {
     if (!auth || !googleProvider) throw new Error('Firebase Auth not available');
+    try {
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alhadaf_remember_me', rememberMe ? 'true' : 'false');
+      }
+    } catch (e) {
+      console.warn('Set persistence note:', e);
+    }
     const res = await signInWithPopup(auth, googleProvider);
     if (res.user) {
       const isAdminUser = res.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -210,8 +221,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginWithEmail = async (email: string, pass: string) => {
+  const loginWithEmail = async (email: string, pass: string, rememberMe: boolean = true) => {
     if (!auth) throw new Error('Firebase Auth not available');
+    try {
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alhadaf_remember_me', rememberMe ? 'true' : 'false');
+      }
+    } catch (e) {
+      console.warn('Set persistence note:', e);
+    }
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
@@ -224,6 +243,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     gradeNumber: number = 2
   ) => {
     if (!auth) throw new Error('Firebase Auth not available');
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alhadaf_remember_me', 'true');
+      }
+    } catch (e) {
+      console.warn('Set persistence note:', e);
+    }
     const res = await createUserWithEmailAndPassword(auth, email, pass);
     if (res.user) {
       await updateProfile(res.user, { displayName: name });
@@ -268,6 +295,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     if (auth) await firebaseSignOut(auth);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('alhadaf_remember_me');
+    }
     setUser(null);
     setProfile(null);
     setNeedsCurriculumSelection(false);

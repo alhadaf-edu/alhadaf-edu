@@ -14,6 +14,7 @@ export default function LoginPage() {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +37,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await loginWithEmail(email.trim(), password);
+      await loginWithEmail(email.trim(), password, rememberMe);
       router.push('/curriculum');
     } catch (err: any) {
       console.error('Login error:', err);
@@ -57,7 +58,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       setGooglePending(true);
-      await loginWithGoogle();
+      await loginWithGoogle(rememberMe);
       // redirect handled by useEffect above
     } catch (err: any) {
       console.error('Google login error:', err);
@@ -176,6 +177,20 @@ export default function LoginPage() {
                 />
                 <Lock className="absolute right-3 top-3 h-4 w-4 text-slate-400" />
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between py-1 px-0.5">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  id="rememberMeCheckbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded-md border-slate-300 dark:border-slate-700 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                />
+                <span>تذكر تسجيل دخولي في المرة القادمة (الدخول المباشر للمنصة)</span>
+              </label>
             </div>
 
             <button

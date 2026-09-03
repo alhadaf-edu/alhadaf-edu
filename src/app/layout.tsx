@@ -8,6 +8,8 @@ import { LessonsProvider } from '@/context/LessonsContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
+import AuthGuard from '@/components/auth/AuthGuard';
+
 const notoKufi = Noto_Kufi_Arabic({
   subsets: ['arabic', 'latin'],
   variable: '--font-noto-kufi',
@@ -112,11 +114,13 @@ export default function RootLayout({
           <ThemeProvider>
             <AdSenseProvider>
               <LessonsProvider>
-                <Navbar />
-                <main className="flex-1">
-                  {children}
-                </main>
-                <Footer />
+                <AuthGuard>
+                  <Navbar />
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                </AuthGuard>
               </LessonsProvider>
             </AdSenseProvider>
           </ThemeProvider>
