@@ -65,3 +65,19 @@
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes marqueeRTL {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(50%); }
+}
+
+.animate-marquee-rtl {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marqueeRTL 28s linear infinite;
+}
+
+.animate-marquee-rtl:hover {
+  animation-play-state: paused;
+}
+

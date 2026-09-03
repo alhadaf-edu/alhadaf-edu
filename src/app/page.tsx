@@ -16,9 +16,11 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Top Banner Ad */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
-        <AdSenseSlot slotType="headerBanner" />
+      {/* Top Banner Ad / Educational News Ticker */}
+      <div className="bg-[#1A1736] border-b border-[#2A254D] px-4 sm:px-6 lg:px-8 py-1">
+        <div className="mx-auto max-w-7xl">
+          <AdSenseSlot slotType="headerBanner" className="!my-1" />
+        </div>
       </div>
 
       {/* Hero Section */}
