@@ -103,7 +103,7 @@ export default function Footer() {
               المنصة الرائدة في تقديم الشروحات المرئية والملخصات والاختبارات التفاعلية للمناهج الدراسية الرسمية في الوطن العربي (مصر، السعودية، الإمارات، الكويت، الأردن، وغيرها)، مساندين للطلاب في تحقيق التميز والدرجات الكاملة.
             </p>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-2.5 pt-2">
               <a
                 href="https://www.youtube.com/channel/UCb9BGNPlPd2dzg9lJsIaFYQ"
                 target="_blank"
@@ -114,27 +114,41 @@ export default function Footer() {
                 <Youtube className="h-4 w-4" />
               </a>
               <a
-                href="https://twitter.com"
+                href="https://t.me/alhadaf_edu"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-600/10 text-sky-400 hover:bg-sky-500 hover:text-white transition-all"
-                title="حساب المنصة على X"
-              >
-                <Twitter className="h-4 w-4" />
-              </a>
-              <a
-                href="https://telegram.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all"
-                title="قناة التيليجرام"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-600/10 text-sky-400 hover:bg-sky-500 hover:text-white transition-all shadow-sm"
+                title="قناة التيليجرام الرسمية (@alhadaf_edu)"
               >
                 <Send className="h-4 w-4" />
               </a>
               <a
+                href="https://t.me/alhadaaf_edu"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all shadow-sm"
+                title="مجموعة أبطال الهداف على تيليجرام (@alhadaaf_edu)"
+              >
+                <div className="relative">
+                  <Send className="h-4 w-4" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full"></span>
+                </div>
+              </a>
+              <a
+                href="https://www.threads.com/@alhadaf_edu"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-200 hover:bg-white hover:text-black transition-all shadow-sm"
+                title="حساب ثريدز Threads (@alhadaf_edu)"
+              >
+                <svg className="h-4 w-4 fill-current" viewBox="0 0 192 192" aria-hidden="true">
+                  <path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.481 72.7303C80.7945 64.6684 88.3846 60.8354 97.227 60.8354C97.3072 60.8354 97.3879 60.8359 97.4687 60.8365C108.577 60.9069 119.227 67.5854 120.485 86.8521C113.626 86.3263 106.183 86.536 98.2435 87.4808C68.966 90.9663 50.8524 105.474 51.9868 126.96C52.5694 138.006 58.7493 147.241 68.3986 151.493C76.9944 155.281 87.5255 155.452 97.0425 151.954C109.845 147.247 118.064 137.747 122.428 122.753C128.665 131.258 136.93 135.539 146.467 135.539C146.758 135.539 147.05 135.535 147.342 135.526C159.278 135.163 167.337 127.346 168.804 114.736C170.528 99.9174 159.043 91.3195 141.537 88.9883ZM106.182 129.835C102.32 132.88 95.8239 134.809 88.9846 133.565C80.3705 131.998 75.9224 125.792 75.602 119.721C75.1432 110.978 82.2036 103.882 99.6455 101.806C104.99 101.17 110.222 100.999 115.304 101.277C113.886 117.818 109.912 126.883 106.182 129.835Z"/>
+                </svg>
+              </a>
+              <a
                 href="mailto:alhadaafpro@gmail.com"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-600/10 text-gold-400 hover:bg-gold-500 hover:text-slate-950 transition-all"
-                title="تواصل بالبريد الإلكتروني"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-600/10 text-gold-400 hover:bg-gold-500 hover:text-slate-950 transition-all shadow-sm"
+                title="تواصل بالبريد الإلكتروني (alhadaafpro@gmail.com)"
               >
                 <Mail className="h-4 w-4" />
               </a>

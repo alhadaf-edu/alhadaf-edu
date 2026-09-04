@@ -44,7 +44,17 @@ import {
   Layers,
   Smile,
   Volume2,
-  LayoutGrid
+  LayoutGrid,
+  PenTool,
+  Eraser,
+  Paintbrush,
+  Trash2,
+  Lock,
+  Unlock,
+  Palette,
+  X,
+  Sliders,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -173,11 +183,21 @@ export default function LiveClassRoomPage() {
   const [isMicOn, setIsMicOn] = useState(false);
   const [isCamOn, setIsCamOn] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenSharePresenter, setScreenSharePresenter] = useState<string>('');
+  const [allowStudentScreenShare, setAllowStudentScreenShare] = useState<boolean>(true);
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'participants' | 'notes'>('chat');
   const [viewMode, setViewMode] = useState<'speaker' | 'gallery'>('gallery');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Floating Annotation & Whiteboard Tool State (قلم عائم، فرشاة، وممحاة على الشاشة)
+  const [isAnnotationOpen, setIsAnnotationOpen] = useState(false);
+  const [annotationTool, setAnnotationTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
+  const [annotationColor, setAnnotationColor] = useState<string>('#ef4444');
+  const [annotationSize, setAnnotationSize] = useState<number>(4);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const annotationCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Recording State (تسجيل الحصة وحفظها على الجهاز)
   const [isRecording, setIsRecording] = useState(false);
@@ -208,6 +228,17 @@ export default function LiveClassRoomPage() {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 4000);
   };
+
+  // Fullscreen event listener to keep state perfectly synchronized
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+    };
+  }, []);
 
   // 1. Fetch Class Data (Instant Cache + API)
   useEffect(() => {
@@ -503,6 +534,7 @@ export default function LiveClassRoomPage() {
               if (publication.source === Track.Source.ScreenShare && screenVideoRef.current) {
                 track.attach(screenVideoRef.current);
                 setIsScreenSharing(true);
+                setScreenSharePresenter(participant.name || 'مشارك');
               } else if (localVideoRef.current) {
                 track.attach(localVideoRef.current);
               }
@@ -516,6 +548,7 @@ export default function LiveClassRoomPage() {
             if (el) el.remove();
             if (publication.source === Track.Source.ScreenShare) {
               setIsScreenSharing(false);
+              setScreenSharePresenter('');
             }
             syncParticipantsList(room);
           })
@@ -530,6 +563,9 @@ export default function LiveClassRoomPage() {
                 setMessages(prev => [...prev, data.message]);
               } else if (data.type === 'hand_raise') {
                 showToast(`✋ ${data.name} يطلب الإذن بالتحدث!`);
+              } else if (data.type === 'screen_perm') {
+                setAllowStudentScreenShare(!!data.allowed);
+                showToast(data.allowed ? '🔓 سمح المشرف للطلاب بمشاركة الشاشة' : '🔒 قفل المشرف مشاركة الشاشة للطلاب');
               } else if (data.type === 'mute_all') {
                 if (room.localParticipant.isMicrophoneEnabled) {
                   room.localParticipant.setMicrophoneEnabled(false);
@@ -647,24 +683,127 @@ export default function LiveClassRoomPage() {
         screenVideoRef.current.srcObject = null;
       }
       setIsScreenSharing(false);
+      setScreenSharePresenter('');
       showToast('⏹️ تم إيقاف مشاركة الشاشة');
     } else {
+      if (!isSupervisorForThisClass && !allowStudentScreenShare) {
+        showToast('🔒 مشاركة الشاشة مقفلة حالياً من قبل المشرف. يرجى الاستئذان أولاً.');
+        return;
+      }
       try {
         if (room && room.localParticipant) {
           const pub = await room.localParticipant.setScreenShareEnabled(true, { audio: true });
           if (pub && pub.videoTrack && screenVideoRef.current) {
             pub.videoTrack.attach(screenVideoRef.current);
           }
+          const mediaTrack = pub?.videoTrack?.mediaStreamTrack;
+          if (mediaTrack) {
+            mediaTrack.onended = () => {
+              setIsScreenSharing(false);
+              setScreenSharePresenter('');
+              if (room.localParticipant) {
+                room.localParticipant.setScreenShareEnabled(false).catch(() => {});
+              }
+            };
+          }
         }
         setIsScreenSharing(true);
-        showToast('🖥️ جاري مشاركة الشاشة والعرض الآن لجميع الطلاب');
+        setScreenSharePresenter(profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف' : 'طالب'));
+        showToast('🖥️ جاري مشاركة الشاشة والعرض الآن لجميع الحاضرين');
       } catch (err) {
         console.warn('Screen share cancelled:', err);
       }
     }
   };
 
-  // 6. Student Raise Hand Broadcast
+  // Supervisor Screen Share Permission Toggle
+  const toggleStudentScreenPermission = () => {
+    if (!isSupervisorForThisClass) return;
+    const newPerm = !allowStudentScreenShare;
+    setAllowStudentScreenShare(newPerm);
+    const room = roomRef.current;
+    if (room && room.localParticipant) {
+      const payload = new TextEncoder().encode(JSON.stringify({
+        type: 'screen_perm',
+        allowed: newPerm
+      }));
+      room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+    }
+    showToast(newPerm ? '🔓 تم السماح للطلاب بمشاركة الشاشة' : '🔒 تم قفل مشاركة الشاشة للطلاب');
+  };
+
+  // 6. Floating Annotation & Whiteboard Canvas Handlers
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = annotationCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const drawOnCanvas = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = annotationCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (annotationTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = annotationSize * 7;
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else if (annotationTool === 'highlighter') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = annotationSize * 4.5;
+      ctx.strokeStyle = annotationColor + '55'; // ~35% opacity highlighter
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = annotationSize;
+      ctx.strokeStyle = annotationColor;
+    }
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    const canvas = annotationCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.closePath();
+    setIsDrawing(false);
+  };
+
+  const clearAnnotationCanvas = () => {
+    const canvas = annotationCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    showToast('🧹 تم مسح كل الرسومات والتحديدات');
+  };
+
+  // 7. Student Raise Hand Broadcast
   const toggleRaiseHand = () => {
     const room = roomRef.current;
     const newState = !isHandRaised;
@@ -682,16 +821,18 @@ export default function LiveClassRoomPage() {
     }
   };
 
-  // 7. RECORDING ENGINE (تسجيل الحصة وحفظ الفيديو مباشرة على جهاز المشرف)
+  // 8. RECORDING ENGINE (تسجيل الحصة وحفظ الفيديو مباشرة على جهاز المشرف)
   const startRecording = async () => {
     try {
-      let recordingStream: MediaStream;
+      let recordingStream: MediaStream | null = null;
 
       if (isScreenSharing && screenVideoRef.current && (screenVideoRef.current.srcObject as MediaStream)) {
         recordingStream = screenVideoRef.current.srcObject as MediaStream;
       } else if (localVideoRef.current && (localVideoRef.current.srcObject as MediaStream)) {
         recordingStream = localVideoRef.current.srcObject as MediaStream;
-      } else {
+      }
+
+      if (!recordingStream) {
         recordingStream = await navigator.mediaDevices.getDisplayMedia({
           video: { displaySurface: 'browser' } as any,
           audio: true
@@ -995,6 +1136,13 @@ export default function LiveClassRoomPage() {
                   playsInline
                   className="w-full h-full object-contain"
                 />
+
+                {/* Presenter Name Badge */}
+                <div className="absolute top-3 right-3 z-20 flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-blue-500/40 text-xs font-bold text-blue-300 shadow-xl">
+                  <MonitorUp className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                  <span>مشاركة الشاشة: <strong className="text-white">{screenSharePresenter || 'أحد الحاضرين'}</strong></span>
+                </div>
+
                 {/* PiP Local Video */}
                 {isCamOn && (
                   <div className="absolute bottom-4 right-4 w-44 h-28 bg-slate-950 rounded-2xl border-2 border-emerald-500/80 overflow-hidden shadow-2xl z-20">
@@ -1105,6 +1253,131 @@ export default function LiveClassRoomPage() {
               </div>
             )}
 
+            {/* INTERACTIVE WHITEBOARD / ANNOTATION CANVAS OVERLAY */}
+            <canvas
+              ref={annotationCanvasRef}
+              onMouseDown={startDrawing}
+              onMouseMove={drawOnCanvas}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={drawOnCanvas}
+              onTouchEnd={stopDrawing}
+              className={`absolute inset-0 w-full h-full z-30 transition-all ${
+                isAnnotationOpen ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'
+              }`}
+            />
+
+            {/* FLOATING ANNOTATION TOOLBAR (قلم عائم، فرشاة، ممحاة، ألوان، مسح) */}
+            {isAnnotationOpen && (
+              <div className="absolute top-4 left-4 z-40 bg-slate-900/95 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-2 max-w-[95%] animate-fade-in">
+                {/* Tool Selection */}
+                <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 gap-1">
+                  <button
+                    onClick={() => setAnnotationTool('pen')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                      annotationTool === 'pen'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="قلم للكتابة الدقيقة"
+                  >
+                    <PenTool className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">قلم</span>
+                  </button>
+
+                  <button
+                    onClick={() => setAnnotationTool('highlighter')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                      annotationTool === 'highlighter'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="فرشاة تظليل وتحديد شبه شفافة"
+                  >
+                    <Paintbrush className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">فرشاة تظليل</span>
+                  </button>
+
+                  <button
+                    onClick={() => setAnnotationTool('eraser')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                      annotationTool === 'eraser'
+                        ? 'bg-red-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="ممحاة لمسح جزء من الرسم"
+                  >
+                    <Eraser className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">ممحاة</span>
+                  </button>
+                </div>
+
+                {/* Color Palette */}
+                {annotationTool !== 'eraser' && (
+                  <div className="flex items-center gap-1.5 bg-slate-950/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
+                    {[
+                      { color: '#ef4444', label: 'أحمر' },
+                      { color: '#eab308', label: 'أصفر' },
+                      { color: '#10b981', label: 'أخضر' },
+                      { color: '#38bdf8', label: 'سماوي' },
+                      { color: '#f97316', label: 'برتقالي' },
+                      { color: '#ffffff', label: 'أبيض' },
+                      { color: '#000000', label: 'أسود' }
+                    ].map((c) => (
+                      <button
+                        key={c.color}
+                        onClick={() => setAnnotationColor(c.color)}
+                        className={`w-5 h-5 rounded-full transition-transform border ${
+                          annotationColor === c.color ? 'scale-125 ring-2 ring-white border-white' : 'border-slate-700 hover:scale-110'
+                        }`}
+                        style={{ backgroundColor: c.color }}
+                        title={c.label}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Stroke Sizes */}
+                <div className="flex items-center gap-1 bg-slate-950/80 px-2 py-1.5 rounded-xl border border-slate-800">
+                  {[
+                    { size: 3, label: 'رفيع' },
+                    { size: 6, label: 'متوسط' },
+                    { size: 12, label: 'عريض' }
+                  ].map((s) => (
+                    <button
+                      key={s.size}
+                      onClick={() => setAnnotationSize(s.size)}
+                      className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        annotationSize === s.size ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Clear All */}
+                <button
+                  onClick={clearAnnotationCanvas}
+                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold flex items-center gap-1 transition-all"
+                  title="مسح كل الرسومات"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">مسح الكل</span>
+                </button>
+
+                {/* Close Toolbar */}
+                <button
+                  onClick={() => setIsAnnotationOpen(false)}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                  title="إغلاق شريط أدوات الرسم"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             {/* Top Left Attendees Badge */}
             <div className="absolute top-4 left-4 flex items-center gap-2 z-20">
               <span className="px-3 py-1 rounded-xl bg-slate-950/85 backdrop-blur-md text-xs font-bold text-slate-200 border border-slate-700/80 flex items-center gap-1.5 shadow-lg">
@@ -1123,7 +1396,7 @@ export default function LiveClassRoomPage() {
           {/* BOTTOM CONTROLS BAR */}
           <div className="mt-3 bg-slate-900/95 border border-slate-800/80 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 backdrop-blur-xl shadow-2xl">
             {/* Left Controls: Media Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Mic Button */}
               <button
                 onClick={toggleMic}
@@ -1152,19 +1425,67 @@ export default function LiveClassRoomPage() {
                 <span className="hidden sm:inline">{isCamOn ? 'الكاميرا تعمل' : 'الكاميرا مغلقة'}</span>
               </button>
 
-              {/* Screen Share Button */}
+              {/* Screen Share Button (Available for all, with supervisor permission check) */}
+              <button
+                onClick={toggleScreenShare}
+                className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
+                  isScreenSharing
+                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                }`}
+                title={
+                  isScreenSharing
+                    ? 'إيقاف مشاركة الشاشة'
+                    : !isSupervisorForThisClass && !allowStudentScreenShare
+                    ? 'مشاركة الشاشة مقفلة من قبل المشرف'
+                    : 'مشاركة الشاشة أو العرض التقديمي'
+                }
+              >
+                <MonitorUp className="w-5 h-5" />
+                <span className="hidden md:inline">{isScreenSharing ? 'إيقاف المشاركة' : 'مشاركة الشاشة'}</span>
+                {!isSupervisorForThisClass && !allowStudentScreenShare && (
+                  <Lock className="w-3 h-3 text-amber-400 inline" />
+                )}
+              </button>
+
+              {/* Whiteboard / Annotation Pen Tool Toggle Button */}
+              <button
+                onClick={() => {
+                  const next = !isAnnotationOpen;
+                  setIsAnnotationOpen(next);
+                  if (next && annotationCanvasRef.current) {
+                    const canvas = annotationCanvasRef.current;
+                    const parent = canvas.parentElement;
+                    if (parent) {
+                      canvas.width = parent.clientWidth;
+                      canvas.height = parent.clientHeight;
+                    }
+                  }
+                }}
+                className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
+                  isAnnotationOpen
+                    ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20 ring-2 ring-purple-400/50'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                }`}
+                title={isAnnotationOpen ? 'إخفاء لوحة الرسم' : 'فتح القلم العائم وأدوات الرسم والتحديد'}
+              >
+                <PenTool className="w-5 h-5 text-amber-400" />
+                <span className="hidden md:inline">{isAnnotationOpen ? 'إخفاء القلم' : 'قلم الشاشة والرسم'}</span>
+              </button>
+
+              {/* Student Screen Share Permission Control (Supervisor Only) */}
               {isSupervisorForThisClass && (
                 <button
-                  onClick={toggleScreenShare}
-                  className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
-                    isScreenSharing
-                      ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  onClick={toggleStudentScreenPermission}
+                  className={`p-2.5 sm:px-3 sm:py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all border ${
+                    allowStudentScreenShare
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
                   }`}
-                  title={isScreenSharing ? 'إيقاف مشاركة الشاشة' : 'مشاركة الشاشة أو العرض'}
+                  title={allowStudentScreenShare ? 'الطلاب مسموح لهم بمشاركة الشاشة (اضغط للقفل)' : 'مشاركة الشاشة مقفلة للطلاب (اضغط للسماح)'}
                 >
-                  <MonitorUp className="w-5 h-5" />
-                  <span className="hidden md:inline">{isScreenSharing ? 'إيقاف المشاركة' : 'مشاركة الشاشة'}</span>
+                  {allowStudentScreenShare ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-amber-400" />}
+                  <span className="hidden lg:inline">{allowStudentScreenShare ? 'مشاركة الطلاب مسموحة' : 'مشاركة الطلاب مقفلة'}</span>
                 </button>
               )}
 
@@ -1186,7 +1507,7 @@ export default function LiveClassRoomPage() {
             </div>
 
             {/* Right Controls: Recording & Supervisor Tools */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* RECORDING BUTTON (حفظ وتسجيل الحصة على الجهاز) */}
               {isSupervisorForThisClass && (
                 <>
