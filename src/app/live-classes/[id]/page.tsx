@@ -183,6 +183,7 @@ export default function LiveClassRoomPage() {
   const [isMicOn, setIsMicOn] = useState(false);
   const [isCamOn, setIsCamOn] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenTrack, setScreenTrack] = useState<Track | null>(null);
   const [screenSharePresenter, setScreenSharePresenter] = useState<string>('');
   const [allowStudentScreenShare, setAllowStudentScreenShare] = useState<boolean>(true);
   const [isHandRaised, setIsHandRaised] = useState(false);
@@ -228,6 +229,18 @@ export default function LiveClassRoomPage() {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 4000);
   };
+
+  // Dedicated track attachment for Screen Share (attaches track whenever video element is mounted)
+  useEffect(() => {
+    const el = screenVideoRef.current;
+    if (el && screenTrack) {
+      screenTrack.attach(el);
+      el.play().catch(() => {});
+      return () => {
+        screenTrack.detach(el);
+      };
+    }
+  }, [screenTrack, isScreenSharing]);
 
   // Fullscreen event listener to keep state perfectly synchronized
   useEffect(() => {
@@ -529,15 +542,14 @@ export default function LiveClassRoomPage() {
               audioElement.id = `audio_${participant.identity}`;
               document.body.appendChild(audioElement);
             }
-            // Attach Video / Screen Track
+            // Screen Share Track → show on main stage for ALL participants
             if (track.kind === Track.Kind.Video) {
-              if (publication.source === Track.Source.ScreenShare && screenVideoRef.current) {
-                track.attach(screenVideoRef.current);
+              if (publication.source === Track.Source.ScreenShare) {
+                setScreenTrack(track);
                 setIsScreenSharing(true);
                 setScreenSharePresenter(participant.name || 'مشارك');
-              } else if (localVideoRef.current) {
-                track.attach(localVideoRef.current);
               }
+              // Remote camera tracks are handled by ParticipantTile via participants list
             }
             syncParticipantsList(room);
           })
@@ -547,6 +559,27 @@ export default function LiveClassRoomPage() {
             const el = document.getElementById(`audio_${participant.identity}`);
             if (el) el.remove();
             if (publication.source === Track.Source.ScreenShare) {
+              setScreenTrack(null);
+              setIsScreenSharing(false);
+              setScreenSharePresenter('');
+            }
+            syncParticipantsList(room);
+          })
+          .on(RoomEvent.LocalTrackPublished, (publication) => {
+            if (!isMounted) return;
+            if (publication.source === Track.Source.ScreenShare && publication.track) {
+              setScreenTrack(publication.track);
+              setIsScreenSharing(true);
+              setScreenSharePresenter(
+                profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف' : 'طالب')
+              );
+            }
+            syncParticipantsList(room);
+          })
+          .on(RoomEvent.LocalTrackUnpublished, (publication) => {
+            if (!isMounted) return;
+            if (publication.source === Track.Source.ScreenShare) {
+              setScreenTrack(null);
               setIsScreenSharing(false);
               setScreenSharePresenter('');
             }
@@ -682,6 +715,7 @@ export default function LiveClassRoomPage() {
       if (screenVideoRef.current) {
         screenVideoRef.current.srcObject = null;
       }
+      setScreenTrack(null);
       setIsScreenSharing(false);
       setScreenSharePresenter('');
       showToast('⏹️ تم إيقاف مشاركة الشاشة');
@@ -693,12 +727,12 @@ export default function LiveClassRoomPage() {
       try {
         if (room && room.localParticipant) {
           const pub = await room.localParticipant.setScreenShareEnabled(true, { audio: true });
-          if (pub && pub.videoTrack && screenVideoRef.current) {
-            pub.videoTrack.attach(screenVideoRef.current);
-          }
+          // Track attachment is handled by LocalTrackPublished event + useEffect
+          // Just set up the browser's native "stop sharing" detection
           const mediaTrack = pub?.videoTrack?.mediaStreamTrack;
           if (mediaTrack) {
             mediaTrack.onended = () => {
+              setScreenTrack(null);
               setIsScreenSharing(false);
               setScreenSharePresenter('');
               if (room.localParticipant) {
@@ -706,9 +740,13 @@ export default function LiveClassRoomPage() {
               }
             };
           }
+          // Set presenter name (state will be set by LocalTrackPublished event)
+          if (pub?.videoTrack) {
+            setScreenTrack(pub.videoTrack);
+            setIsScreenSharing(true);
+            setScreenSharePresenter(profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف' : 'طالب'));
+          }
         }
-        setIsScreenSharing(true);
-        setScreenSharePresenter(profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف' : 'طالب'));
         showToast('🖥️ جاري مشاركة الشاشة والعرض الآن لجميع الحاضرين');
       } catch (err) {
         console.warn('Screen share cancelled:', err);
