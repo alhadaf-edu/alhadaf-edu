@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { 
   Sparkles, 
   Send, 
@@ -18,8 +19,13 @@ import IslamicPattern from './IslamicPattern';
 import AdSenseSlot from '../common/AdSenseSlot';
 
 export default function Footer() {
+  const pathname = usePathname();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+
+  // Don't render general footer inside active live classroom
+  const isInsideLiveRoom = pathname?.startsWith('/live-classes/') && pathname !== '/live-classes';
+  if (isInsideLiveRoom) return null;
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();

@@ -38,6 +38,10 @@ export default function Navbar() {
 
   const canAccessAdmin = isAdmin || isModerator;
 
+  // Don't render general navbar inside an active live virtual classroom
+  const isInsideLiveRoom = pathname?.startsWith('/live-classes/') && pathname !== '/live-classes';
+  if (isInsideLiveRoom) return null;
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [curriculumDropdown, setCurriculumDropdown] = useState(false);
   const [aboutDropdown, setAboutDropdown] = useState(false);

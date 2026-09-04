@@ -1394,41 +1394,41 @@ export default function LiveClassRoomPage() {
           </div>
 
           {/* BOTTOM CONTROLS BAR */}
-          <div className="mt-3 bg-slate-900/95 border border-slate-800/80 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 backdrop-blur-xl shadow-2xl">
+          <div className="mt-3 bg-slate-900/95 border border-slate-800/80 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2 backdrop-blur-xl shadow-2xl overflow-x-auto scrollbar-none">
             {/* Left Controls: Media Actions */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* Mic Button */}
               <button
                 onClick={toggleMic}
-                className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
+                className={`p-2.5 sm:p-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all ${
                   isMicOn
                     ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                 }`}
                 title={isMicOn ? 'كتم الميكروفون' : 'تشغيل الميكروفون والتحدث'}
               >
-                {isMicOn ? <Mic className="w-5 h-5 text-white" /> : <MicOff className="w-5 h-5 text-red-400" />}
-                <span className="hidden sm:inline">{isMicOn ? 'المايك يعمل' : 'المايك مكتوم'}</span>
+                {isMicOn ? <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <MicOff className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />}
+                <span className="text-[11px] sm:text-xs">{isMicOn ? 'المايك يعمل' : 'المايك مكتوم'}</span>
               </button>
 
               {/* Camera Button */}
               <button
                 onClick={toggleCamera}
-                className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
+                className={`p-2.5 sm:p-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all ${
                   isCamOn
                     ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                 }`}
                 title={isCamOn ? 'إيقاف الكاميرا' : 'تشغيل الكاميرا'}
               >
-                {isCamOn ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5 text-red-400" />}
-                <span className="hidden sm:inline">{isCamOn ? 'الكاميرا تعمل' : 'الكاميرا مغلقة'}</span>
+                {isCamOn ? <VideoIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />}
+                <span className="text-[11px] sm:text-xs">{isCamOn ? 'الكاميرا تعمل' : 'الكاميرا مغلقة'}</span>
               </button>
 
               {/* Screen Share Button (Available for all, with supervisor permission check) */}
               <button
                 onClick={toggleScreenShare}
-                className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
+                className={`p-2.5 sm:p-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all ${
                   isScreenSharing
                     ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
@@ -1441,8 +1441,8 @@ export default function LiveClassRoomPage() {
                     : 'مشاركة الشاشة أو العرض التقديمي'
                 }
               >
-                <MonitorUp className="w-5 h-5" />
-                <span className="hidden md:inline">{isScreenSharing ? 'إيقاف المشاركة' : 'مشاركة الشاشة'}</span>
+                <MonitorUp className="w-4 h-4 sm:w-5 sm:h-5 text-sky-400" />
+                <span className="text-[11px] sm:text-xs">{isScreenSharing ? 'إيقاف المشاركة' : 'مشاركة الشاشة'}</span>
                 {!isSupervisorForThisClass && !allowStudentScreenShare && (
                   <Lock className="w-3 h-3 text-amber-400 inline" />
                 )}
@@ -1462,22 +1462,22 @@ export default function LiveClassRoomPage() {
                     }
                   }
                 }}
-                className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
+                className={`p-2.5 sm:p-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all ${
                   isAnnotationOpen
                     ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20 ring-2 ring-purple-400/50'
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                 }`}
                 title={isAnnotationOpen ? 'إخفاء لوحة الرسم' : 'فتح القلم العائم وأدوات الرسم والتحديد'}
               >
-                <PenTool className="w-5 h-5 text-amber-400" />
-                <span className="hidden md:inline">{isAnnotationOpen ? 'إخفاء القلم' : 'قلم الشاشة والرسم'}</span>
+                <PenTool className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                <span className="text-[11px] sm:text-xs">{isAnnotationOpen ? 'إخفاء القلم' : 'قلم ورسم'}</span>
               </button>
 
               {/* Student Screen Share Permission Control (Supervisor Only) */}
               {isSupervisorForThisClass && (
                 <button
                   onClick={toggleStudentScreenPermission}
-                  className={`p-2.5 sm:px-3 sm:py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all border ${
+                  className={`p-2.5 sm:px-3 sm:py-2.5 rounded-2xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all border ${
                     allowStudentScreenShare
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
                       : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
@@ -1485,7 +1485,7 @@ export default function LiveClassRoomPage() {
                   title={allowStudentScreenShare ? 'الطلاب مسموح لهم بمشاركة الشاشة (اضغط للقفل)' : 'مشاركة الشاشة مقفلة للطلاب (اضغط للسماح)'}
                 >
                   {allowStudentScreenShare ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-amber-400" />}
-                  <span className="hidden lg:inline">{allowStudentScreenShare ? 'مشاركة الطلاب مسموحة' : 'مشاركة الطلاب مقفلة'}</span>
+                  <span className="text-[11px] sm:text-xs hidden sm:inline">{allowStudentScreenShare ? 'مشاركة الطلاب مفعلة' : 'مشاركة الطلاب مقفلة'}</span>
                 </button>
               )}
 
@@ -1493,60 +1493,60 @@ export default function LiveClassRoomPage() {
               {!isSupervisorForThisClass && (
                 <button
                   onClick={toggleRaiseHand}
-                  className={`p-3 rounded-2xl font-semibold text-xs flex items-center gap-2 transition-all ${
+                  className={`p-2.5 sm:p-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 shrink-0 transition-all ${
                     isHandRaised
                       ? 'bg-amber-500 text-slate-950 font-bold'
                       : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                   }`}
                   title={isHandRaised ? 'خفض اليد' : 'رفع اليد للاستئذان'}
                 >
-                  <Hand className="w-5 h-5" />
-                  <span className="hidden md:inline">{isHandRaised ? 'اليد مرفوعة' : 'رفع اليد'}</span>
+                  <Hand className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
+                  <span className="text-[11px] sm:text-xs">{isHandRaised ? 'اليد مرفوعة' : 'رفع اليد'}</span>
                 </button>
               )}
             </div>
 
             {/* Right Controls: Recording & Supervisor Tools */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* RECORDING BUTTON (حفظ وتسجيل الحصة على الجهاز) */}
               {isSupervisorForThisClass && (
                 <>
                   {!isRecording ? (
                     <button
                       onClick={startRecording}
-                      className="p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors border border-red-500/30"
+                      className="p-2 sm:px-3 sm:py-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors border border-red-500/30"
                       title="تسجيل الحصة وحفظ الفيديو على جهازك"
                     >
                       <CircleDot className="w-4 h-4 text-red-500 animate-pulse" />
-                      <span>تسجيل الحصة</span>
+                      <span className="text-[11px] sm:text-xs">تسجيل</span>
                     </button>
                   ) : (
                     <button
                       onClick={stopRecording}
-                      className="p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-red-600/30"
+                      className="p-2 sm:px-3 sm:py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all shadow-lg shadow-red-600/30"
                       title="إيقاف التسجيل وحفظ ملف الفيديو على اللابتوب"
                     >
                       <Square className="w-4 h-4 fill-current" />
-                      <span>إيقاف وحفظ ({formatTimer(recordingTime)})</span>
+                      <span className="text-[11px] sm:text-xs">حفظ ({formatTimer(recordingTime)})</span>
                     </button>
                   )}
 
                   <button
                     onClick={handleMuteAll}
-                    className="p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700"
+                    className="p-2 sm:px-3 sm:py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors border border-slate-700"
                     title="كتم صوت جميع الطلاب"
                   >
                     <VolumeX className="w-4 h-4 text-amber-400" />
-                    <span className="hidden xl:inline">كتم صوت الجميع</span>
+                    <span className="text-[11px] sm:text-xs hidden md:inline">كتم الجميع</span>
                   </button>
 
                   <button
                     onClick={handleEndClass}
-                    className="p-2.5 sm:px-4 sm:py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-red-600/20"
+                    className="p-2 sm:px-4 sm:py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all shadow-lg shadow-red-600/20"
                     title="إنهاء الحصة لجميع الحاضرين"
                   >
                     <PhoneOff className="w-4 h-4" />
-                    <span>إنهاء الحصة</span>
+                    <span className="text-[11px] sm:text-xs">إنهاء الحصة</span>
                   </button>
                 </>
               )}
@@ -1554,11 +1554,11 @@ export default function LiveClassRoomPage() {
               {!isSupervisorForThisClass && (
                 <Link
                   href="/live-classes"
-                  className="p-2.5 sm:px-4 sm:py-2.5 rounded-xl bg-red-600/80 hover:bg-red-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+                  className="p-2.5 sm:px-4 sm:py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all shadow-lg shadow-red-600/20"
                   title="مغادرة الحصة"
                 >
                   <PhoneOff className="w-4 h-4" />
-                  <span>مغادرة</span>
+                  <span className="text-[11px] sm:text-xs">مغادرة</span>
                 </Link>
               )}
             </div>
