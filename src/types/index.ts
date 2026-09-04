@@ -1,7 +1,8 @@
-export type CountryCode = 'sa' | 'eg' | 'ae' | 'kw' | 'jo' | 'qa' | 'om' | 'general';
+export type CountryCode = 'sa' | 'eg' | 'ae' | 'kw' | 'jo' | 'qa' | 'om' | 'bh' | 'dz' | 'ma' | 'iq' | 'general';
 
 export interface CountryInfo {
   code: CountryCode;
+  id?: CountryCode;
   name: string;
   shortName: string;
   demonym: string;
@@ -13,9 +14,10 @@ export interface CountryInfo {
   examHighlight: string;
   examTagline: string;
   academicYear: string;
+  isActive?: boolean;
 }
 
-export type StageType = 'elementary' | 'middle' | 'secondary';
+export type StageType = 'elementary' | 'middle' | 'secondary' | 'primary' | 'general';
 
 export interface StageInfo {
   id: StageType;
@@ -153,24 +155,84 @@ export interface Comment {
   replyTo?: string;
 }
 
-export type UserRole = 'superadmin' | 'moderator' | 'student' | 'teacher';
+export type UserRole = 'superadmin' | 'moderator' | 'student' | 'teacher' | 'SUPER_ADMIN' | 'COUNTRY_SUPERVISOR' | 'STUDENT';
 export type UserStatus = 'active' | 'banned' | 'warned';
 
 export interface UserProfile {
   uid: string;
+  id?: string;
   email: string;
   displayName: string;
+  name?: string;
   photoURL?: string;
   role: UserRole;
   status?: UserStatus;
   assignedCountry?: CountryCode;
+  countryId?: CountryCode;
   country?: CountryCode;
   gradeNumber?: number;
+  gradeId?: number | string;
   stage?: StageType;
   savedLessons?: string[];
   quizHistory?: QuizResult[];
   createdAt: string;
   warnMessage?: string;
+}
+
+export type LiveClassStatus = 'scheduled' | 'live' | 'ended' | 'cancelled' | 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
+
+export interface LiveClassAttendee {
+  id?: string;
+  userId: string;
+  name?: string;
+  userName: string;
+  userRole: UserRole;
+  role?: UserRole;
+  userCountry?: CountryCode;
+  country?: CountryCode;
+  joinedAt: string;
+  leftAt?: string;
+  durationMinutes?: number;
+  isHost?: boolean;
+}
+
+export interface LiveClass {
+  id: string;
+  title: string;
+  description?: string;
+  countryId: CountryCode;
+  stage: StageType;
+  gradeNumber: number;
+  subjectId: string;
+  subjectName: string;
+  unitTitle?: string;
+  lessonId?: string;
+  scheduledAt: string;
+  startedAt?: string;
+  endedAt?: string;
+  status: LiveClassStatus;
+  roomName: string;
+  supervisorId: string;
+  supervisorName: string;
+  supervisorEmail: string;
+  supervisorCountry: CountryCode;
+  attendeesCount?: number;
+  attendees?: LiveClassAttendee[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface LiveKitTokenResponse {
+  token: string;
+  roomName: string;
+  serverUrl: string;
+  identity: string;
+  name: string;
+  role: UserRole;
+  canPublish: boolean;
+  canSubscribe: boolean;
+  canPublishData: boolean;
+  isRoomAdmin: boolean;
 }
 
 export interface AdSettings {

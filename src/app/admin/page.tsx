@@ -15,6 +15,7 @@ import {
   ShieldCheck, 
   BookOpen, 
   Video, 
+  Radio, 
   HelpCircle, 
   DollarSign, 
   TrendingUp, 
@@ -63,7 +64,7 @@ export default function AdminDashboardPage() {
     setSyncMode 
   } = useLessons();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'lessons' | 'quizzes' | 'youtube' | 'ads' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'lessons' | 'quizzes' | 'live_classes' | 'youtube' | 'ads' | 'users'>('overview');
   
   // Country isolation filter in Admin Dashboard ('all' or specific CountryCode)
   const [adminCountry, setAdminCountry] = useState<CountryCode | 'all'>('all');
@@ -622,10 +623,11 @@ export default function AdminDashboardPage() {
           {[
             { id: 'overview', label: 'الرؤية الشاملة', icon: TrendingUp, adminOnly: false },
             { id: 'lessons', label: `الدروس والفيديوهات (${filteredLessons.length})`, icon: Video, adminOnly: false },
+            { id: 'live_classes', label: 'الحصص المباشرة والصفوف', icon: Radio, adminOnly: false },
             { id: 'quizzes', label: `الاختبارات (${filteredQuizzes.length})`, icon: HelpCircle, adminOnly: false },
             { id: 'youtube', label: 'YouTube', icon: RefreshCw, adminOnly: true },
             { id: 'ads', label: 'AdSense', icon: DollarSign, adminOnly: true },
-            { id: 'users', label: `المستخدمون (${allUsers.length})`, icon: Users, adminOnly: true },
+            { id: 'users', label: `المستخدمون والمشرفون (${allUsers.length})`, icon: Users, adminOnly: true },
           ].filter(t => !t.adminOnly || isAdmin).map((tab) => (
             <button
               key={tab.id}
@@ -1272,6 +1274,77 @@ export default function AdminDashboardPage() {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB: LIVE CLASSES MANAGEMENT --- */}
+        {activeTab === 'live_classes' && (
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-3 w-3 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                    <h2 className="text-base font-black text-slate-900 dark:text-white">
+                      إدارة الحصص المباشرة والصفوف الافتراضية
+                    </h2>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    جدولة وإدارة الغرف الافتراضية، ومتابعة البث الحي للمشرفين في جميع الدول والمناهج.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/live-classes"
+                    className="flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-emerald-600/20 transition-all hover:scale-105"
+                  >
+                    <Radio className="h-4 w-4" />
+                    <span>فتح مركز الحصص المباشرة</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Quick Info Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-500">نظام الصلاحيات المطبّق:</span>
+                  <div className="flex items-center gap-2 mt-1 font-extrabold text-emerald-600 dark:text-emerald-400">
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>المشرف العام & مشرفو الدول</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    المشرف العام يدير جميع الدول، ومشرف الدولة يقتصر تحكمه على حصص دولته فقط.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-500">تقنية البث والاتصال:</span>
+                  <div className="flex items-center gap-2 mt-1 font-extrabold text-indigo-600 dark:text-indigo-400">
+                    <Video className="h-4 w-4" />
+                    <span>WebRTC & LiveKit Cloud</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    بث صوت وفيديو تفاعلي فائق السرعة مع مشاركة الشاشة ومحادثة مباشرة.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-500">الدخول السريع للغرفة:</span>
+                  <div className="flex items-center gap-2 mt-1 font-extrabold text-amber-600 dark:text-amber-400">
+                    <Sparkles className="h-4 w-4" />
+                    <span>روابط مباشرة وتشفير Tokens</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    توليد مفاتيح صلاحيات فورية تمنع انتحال صفة المشرف أو تداخل الدول.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}

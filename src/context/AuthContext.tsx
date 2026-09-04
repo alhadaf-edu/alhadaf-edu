@@ -16,12 +16,17 @@ import {
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { QuizResult, UserProfile, CountryCode, StageType, UserRole } from '@/types';
+import { normalizeRole } from '@/lib/rbac';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   isAdmin: boolean;
   isModerator: boolean;
+  isSuperAdmin: boolean;
+  isCountrySupervisor: boolean;
+  isStudent: boolean;
+  userCountry: CountryCode;
   loading: boolean;
   needsCurriculumSelection: boolean;
   loginWithGoogle: (rememberMe?: boolean) => Promise<void>;
@@ -333,10 +338,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return !!profile?.savedLessons?.includes(lessonId);
   };
 
-  const isAdmin = profile?.role === 'superadmin' ||
-    !!(user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-
-  const isModerator = profile?.role === 'moderator';
+  const normalized = normalizeRole(profile?.role, user?.email);
+  const isSuperAdmin = normalized === 'SUPER_ADMIN';
+  const isCountrySupervisor = normalized === 'COUNTRY_SUPERVISOR';
+  const isStudent = normalized === 'STUDENT';
+  const isAdmin = isSuperAdmin;
+  const isModerator = isCountrySupervisor;
+  const userCountry: CountryCode = (profile?.assignedCountry || profile?.countryId || profile?.country || 'sa') as CountryCode;
 
   return (
     <AuthContext.Provider
@@ -345,6 +353,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         isAdmin,
         isModerator,
+        isSuperAdmin,
+        isCountrySupervisor,
+        isStudent,
+        userCountry,
         loading,
         needsCurriculumSelection,
         loginWithGoogle,

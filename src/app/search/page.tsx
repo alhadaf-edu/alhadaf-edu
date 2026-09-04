@@ -91,6 +91,8 @@ function SearchContent() {
     elementary: 'الابتدائية',
     middle: 'المتوسطة / الإعدادية',
     secondary: 'الثانوية',
+    primary: 'الابتدائية',
+    general: 'عام / لكافة المراحل',
   };
 
   const gradeLabels = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'];

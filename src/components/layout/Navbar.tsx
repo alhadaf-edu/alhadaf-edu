@@ -22,6 +22,7 @@ import {
   Globe2,
   Info,
   Phone,
+  Radio,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -86,6 +87,7 @@ export default function Navbar() {
   const mainNavLinks = [
     { name: 'الرئيسية', href: '/' },
     { name: 'المناهج الدراسية', href: '/curriculum', hasDropdown: true },
+    { name: 'الحصص المباشرة', href: '/live-classes', icon: Radio, highlight: true },
     { name: 'مكتبة الفيديو', href: '/videos', icon: Video },
     { name: 'بنك الاختبارات', href: '/quizzes', icon: FileQuestion },
     { 
