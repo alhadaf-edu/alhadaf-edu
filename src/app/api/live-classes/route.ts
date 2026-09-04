@@ -9,13 +9,19 @@ export const dynamic = 'force-dynamic';
 // Resilient in-memory persistence across serverless invocations
 declare global {
   var _alhadafLiveClasses: LiveClass[] | undefined;
+  var _alhadafDeletedClasses: Set<string> | undefined;
 }
 
 if (!globalThis._alhadafLiveClasses) {
   globalThis._alhadafLiveClasses = [];
 }
 
+if (!globalThis._alhadafDeletedClasses) {
+  globalThis._alhadafDeletedClasses = new Set<string>();
+}
+
 const memoryClasses = globalThis._alhadafLiveClasses;
+const deletedClasses = globalThis._alhadafDeletedClasses;
 
 // Fast timeout helper to prevent serverless Firestore hangs
 async function withTimeout<T>(promise: Promise<T>, ms = 2000, fallback: T): Promise<T> {
@@ -82,17 +88,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Apply country isolation filter and filter out deleted classes
+    liveClasses = liveClasses.filter(c => !deletedClasses.has(c.id));
+
     // If specific id requested
     if (id) {
       const single = liveClasses.find(c => c.id === id);
       return NextResponse.json({
         success: true,
         count: single ? 1 : 0,
+        deleted: deletedClasses.has(id),
         classes: single ? [single] : []
       });
     }
 
-    // Apply country isolation filter
     if (effectiveCountry !== 'all') {
       liveClasses = liveClasses.filter(c => c.countryId === effectiveCountry);
     }
@@ -104,13 +113,16 @@ export async function GET(req: NextRequest) {
       success: true,
       count: liveClasses.length,
       country: effectiveCountry,
-      classes: liveClasses
+      classes: liveClasses,
+      deletedIds: Array.from(deletedClasses)
     });
   } catch (err: any) {
+    const valid = memoryClasses.filter(c => !deletedClasses.has(c.id));
     return NextResponse.json({ 
       success: true, 
-      count: memoryClasses.length, 
-      classes: memoryClasses 
+      count: valid.length, 
+      classes: valid,
+      deletedIds: Array.from(deletedClasses)
     });
   }
 }
@@ -253,6 +265,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'معرف الحصة مطلوب للحذف.' }, { status: 400 });
     }
 
+    // Track in global deleted set so no other serverless instance or cache re-introduces it
+    deletedClasses.add(id);
+
     const idx = memoryClasses.findIndex(m => m.id === id);
     if (idx >= 0) {
       memoryClasses.splice(idx, 1);
@@ -260,11 +275,14 @@ export async function DELETE(req: NextRequest) {
 
     if (db) {
       deleteDoc(doc(db, 'live_classes', id)).catch(() => {});
+      // Also mark as deleted if deleteDoc is delayed
+      setDoc(doc(db, 'live_classes', id), { isDeleted: true, status: 'deleted' }, { merge: true }).catch(() => {});
     }
 
     return NextResponse.json({
       success: true,
-      message: 'تم حذف الحصة بنجاح.'
+      deletedId: id,
+      message: 'تم حذف الحصة بنجاح من جميع الأجهزة.'
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -233,6 +233,24 @@ export default function LiveClassRoomPage() {
       try {
         const res = await fetch(`/api/live-classes?id=${classId}&userId=${user?.uid || ''}&country=${userCountry || 'sa'}`);
         const data = await res.json();
+        if (data.deleted) {
+          // The class has been explicitly deleted by a supervisor!
+          setErrorMsg('قام المشرف بحذف هذه الحصة الافتراضية.');
+          if (typeof window !== 'undefined') {
+            const cached = localStorage.getItem('alhadaf_live_classes_v2');
+            if (cached) {
+              try {
+                const list = JSON.parse(cached).filter((c: any) => c.id !== classId);
+                localStorage.setItem('alhadaf_live_classes_v2', JSON.stringify(list));
+              } catch {}
+            }
+          }
+          setTimeout(() => {
+            router.push('/live-classes');
+          }, 2000);
+          return;
+        }
+
         if (data.success && Array.isArray(data.classes) && data.classes.length > 0) {
           const found = data.classes[0];
           setClassData(found);
@@ -490,6 +508,11 @@ export default function LiveClassRoomPage() {
                   setIsMicOn(false);
                   showToast('🔇 قام المشرف بكتم صوت الجميع');
                 }
+              } else if (data.type === 'class_deleted') {
+                showToast('⚠️ قام المشرف بحذف هذه الحصة');
+                setTimeout(() => {
+                  router.push('/live-classes');
+                }, 1500);
               }
             } catch {}
           });

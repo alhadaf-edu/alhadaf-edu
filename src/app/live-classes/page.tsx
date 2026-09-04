@@ -90,20 +90,24 @@ export default function LiveClassesPage() {
       const res = await fetch(`/api/live-classes?userId=${user?.uid || ''}&role=${profile?.role || 'STUDENT'}&country=${userCountry || 'sa'}&targetCountry=${selectedCountryFilter}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.classes)) {
+        const deletedSet = new Set<string>(Array.isArray(data.deletedIds) ? data.deletedIds : []);
+
+        // Filter out any locally cached class that was deleted on server
+        localList = localList.filter((c: LiveClass) => c && c.id && !deletedSet.has(c.id));
+
         // Merge API with local items using a Map keyed by id
         const map = new Map<string, LiveClass>();
-        // First insert local classes
+        // First insert valid local classes
         localList.forEach((c: LiveClass) => {
-          if (c && c.id) map.set(c.id, c);
+          if (c && c.id && !deletedSet.has(c.id)) map.set(c.id, c);
         });
         // Then merge server classes (giving preference to active/live status)
         data.classes.forEach((c: LiveClass) => {
-          if (c && c.id) {
+          if (c && c.id && !deletedSet.has(c.id)) {
             const existing = map.get(c.id);
             if (!existing) {
               map.set(c.id, c);
             } else {
-              // If existing was locally started as live, preserve live status
               const statusOrder: Record<string, number> = { 'ended': 3, 'live': 2, 'scheduled': 1 };
               const existingScore = statusOrder[(existing.status || '').toLowerCase()] || 0;
               const newScore = statusOrder[(c.status || '').toLowerCase()] || 0;
@@ -124,8 +128,13 @@ export default function LiveClassesPage() {
     }
   }, [selectedCountryFilter, userCountry, user?.uid, profile?.role]);
 
+  // Real-time synchronization across all devices (Polls every 4 seconds)
   useEffect(() => {
     fetchClasses();
+    const interval = setInterval(() => {
+      fetchClasses();
+    }, 4000);
+    return () => clearInterval(interval);
   }, [fetchClasses]);
 
   // Handle Copy Link
