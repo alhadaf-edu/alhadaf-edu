@@ -145,8 +145,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const classId = `class_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const roomName = `room_${countryId}_${classId}`;
+    const classId = body.id || `class_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const roomName = body.roomName || `live_class_${classId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
     const newClass: LiveClass = {
       id: classId,

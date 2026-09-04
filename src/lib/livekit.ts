@@ -40,8 +40,11 @@ export async function createLiveKitToken(params: GenerateLiveKitTokenParams): Pr
 
   const normRole = normalizeRole(userRole, userEmail);
 
-  // Determine permissions based on strict RBAC
-  let canPublish = false;
+  // In Zoom / Google Meet style interactive rooms:
+  // - SUPER_ADMIN & COUNTRY_SUPERVISOR (for their country): Full Admin + Host + Publish
+  // - OTHER SUPERVISORS / STUDENTS: Can Publish Audio & Video & Chat (canPublish = true, canSubscribe = true, canPublishData = true)
+  // - Only roomAdmin is reserved for Hosts / Supervisors
+  let canPublish = true;
   let canSubscribe = true;
   let canPublishData = true;
   let isRoomAdmin = false;
@@ -52,22 +55,20 @@ export async function createLiveKitToken(params: GenerateLiveKitTokenParams): Pr
     canPublishData = true;
     isRoomAdmin = true;
   } else if (normRole === 'COUNTRY_SUPERVISOR') {
-    // Country supervisor is Host only if class belongs to their country
     if (userCountry === classCountry) {
       canPublish = true;
       canSubscribe = true;
       canPublishData = true;
       isRoomAdmin = true;
     } else {
-      // If a supervisor enters another country's room, they enter only as a listener/observer
-      canPublish = false;
+      canPublish = true;
       canSubscribe = true;
       canPublishData = true;
       isRoomAdmin = false;
     }
   } else {
-    // STUDENT: strictly participant
-    canPublish = false; // Students can listen & chat; mic can be enabled by host
+    // STUDENT: Full interactive participant (can speak, open camera, chat)
+    canPublish = true;
     canSubscribe = true;
     canPublishData = true;
     isRoomAdmin = false;

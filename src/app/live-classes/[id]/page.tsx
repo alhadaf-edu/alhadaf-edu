@@ -43,7 +43,8 @@ import {
   Camera,
   Layers,
   Smile,
-  Volume2
+  Volume2,
+  LayoutGrid
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -67,6 +68,91 @@ interface ParticipantInfo {
   isSpeaking?: boolean;
   videoTrack?: Track;
   audioTrack?: Track;
+  participant?: Participant;
+}
+
+// Dedicated Zoom / Google Meet style video tile component
+function ParticipantTile({
+  participantInfo,
+  isActiveSpeaker
+}: {
+  participantInfo: ParticipantInfo;
+  isActiveSpeaker: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    const track = participantInfo.videoTrack;
+    if (el && track) {
+      track.attach(el);
+      return () => {
+        track.detach(el);
+      };
+    }
+  }, [participantInfo.videoTrack, participantInfo.isVideoOn]);
+
+  const hasVideo = participantInfo.isVideoOn && !!participantInfo.videoTrack;
+
+  return (
+    <div
+      className={`relative w-full h-full min-h-[160px] sm:min-h-[200px] rounded-2xl bg-slate-900 border overflow-hidden flex flex-col items-center justify-center shadow-lg transition-all duration-300 ${
+        isActiveSpeaker
+          ? 'border-emerald-400 ring-2 ring-emerald-400/60 shadow-emerald-500/20'
+          : 'border-slate-800'
+      }`}
+    >
+      {/* Video Element */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`w-full h-full object-cover ${hasVideo ? 'block' : 'hidden'}`}
+      />
+
+      {/* Avatar Placeholder when video is off */}
+      {!hasVideo && (
+        <div className="flex flex-col items-center justify-center p-4 space-y-2">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-700 border border-slate-600/50 flex items-center justify-center text-xl sm:text-2xl font-bold text-slate-100 shadow-md">
+            {participantInfo.name.charAt(0)}
+          </div>
+          <span className="text-xs text-slate-300 font-semibold truncate max-w-[140px]">
+            {participantInfo.name}
+          </span>
+        </div>
+      )}
+
+      {/* Top Left Status Badge */}
+      <div className="absolute top-2 left-2 flex items-center gap-1.5 z-10">
+        <span
+          className={`p-1.5 rounded-lg text-white backdrop-blur-md ${
+            participantInfo.isAudioOn ? 'bg-emerald-600/80' : 'bg-red-500/80'
+          }`}
+          title={participantInfo.isAudioOn ? 'المايك يعمل' : 'المايك مكتوم'}
+        >
+          {participantInfo.isAudioOn ? <Volume2 className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
+        </span>
+      </div>
+
+      {/* Bottom Name & Role Overlay */}
+      <div className="absolute bottom-2 inset-x-2 bg-slate-950/80 backdrop-blur-md py-1 px-2 rounded-xl flex items-center justify-between border border-slate-800/80 z-10">
+        <span className="text-[11px] sm:text-xs font-bold text-white truncate max-w-[110px] sm:max-w-[150px]">
+          {participantInfo.name}
+        </span>
+        {participantInfo.isHost ? (
+          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center gap-1">
+            <Crown className="w-2.5 h-2.5" />
+            <span>المشرف</span>
+          </span>
+        ) : (
+          <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]">
+            طالب
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function LiveClassRoomPage() {
@@ -89,6 +175,7 @@ export default function LiveClassRoomPage() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'participants' | 'notes'>('chat');
+  const [viewMode, setViewMode] = useState<'speaker' | 'gallery'>('gallery');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -149,11 +236,59 @@ export default function LiveClassRoomPage() {
         if (data.success && Array.isArray(data.classes) && data.classes.length > 0) {
           const found = data.classes[0];
           setClassData(found);
+          setErrorMsg('');
         } else if (!classData) {
-          setErrorMsg('لم يتم العثور على الحصة أو ربما تم حذفها.');
+          // Graceful auto-creation fallback for direct room join (like Zoom / Google Meet meeting links)
+          const fallbackClass: LiveClass = {
+            id: classId,
+            title: 'حصة تفاعلية مباشرة',
+            description: 'فصل افتراضي وبث مباشر عبر تقنية WebRTC',
+            countryId: userCountry || 'sa',
+            stage: 'secondary',
+            gradeNumber: 1,
+            subjectId: 'general',
+            subjectName: 'بث مباشر',
+            scheduledAt: new Date().toISOString(),
+            status: 'live',
+            roomName: `live_class_${classId.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+            supervisorId: 'supervisor',
+            supervisorName: 'المشرف المعتمد',
+            supervisorEmail: '',
+            supervisorCountry: userCountry || 'sa',
+            attendeesCount: 1,
+            attendees: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          setClassData(fallbackClass);
+          setErrorMsg('');
         }
       } catch (e) {
-        if (!classData) setErrorMsg('تعذر الاتصال بالخادم لتحميل الحصة.');
+        if (!classData) {
+          const fallbackClass: LiveClass = {
+            id: classId,
+            title: 'حصة تفاعلية مباشرة',
+            description: 'فصل افتراضي وبث مباشر عبر تقنية WebRTC',
+            countryId: userCountry || 'sa',
+            stage: 'secondary',
+            gradeNumber: 1,
+            subjectId: 'general',
+            subjectName: 'بث مباشر',
+            scheduledAt: new Date().toISOString(),
+            status: 'live',
+            roomName: `live_class_${classId.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+            supervisorId: 'supervisor',
+            supervisorName: 'المشرف المعتمد',
+            supervisorEmail: '',
+            supervisorCountry: userCountry || 'sa',
+            attendeesCount: 1,
+            attendees: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          setClassData(fallbackClass);
+          setErrorMsg('');
+        }
       } finally {
         setLoading(false);
       }
@@ -166,11 +301,22 @@ export default function LiveClassRoomPage() {
   const syncParticipantsList = useCallback((room: Room) => {
     const list: ParticipantInfo[] = [];
 
+    // Helper to get video track
+    const getParticipantVideoTrack = (p: Participant): Track | undefined => {
+      for (const pub of Array.from(p.videoTrackPublications.values())) {
+        if (pub.track && pub.source !== Track.Source.ScreenShare) {
+          return pub.track;
+        }
+      }
+      return undefined;
+    };
+
     // 1. Local Participant
     if (room.localParticipant) {
       const lp = room.localParticipant;
       let meta: any = {};
       try { meta = JSON.parse(lp.metadata || '{}'); } catch {}
+      const vTrack = getParticipantVideoTrack(lp);
       list.push({
         identity: lp.identity,
         name: lp.name || profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف المعتمد' : 'طالب'),
@@ -178,7 +324,9 @@ export default function LiveClassRoomPage() {
         isHost: isSupervisorForThisClass,
         isAudioOn: lp.isMicrophoneEnabled,
         isVideoOn: lp.isCameraEnabled,
-        isSpeaking: lp.isSpeaking
+        isSpeaking: lp.isSpeaking,
+        videoTrack: vTrack,
+        participant: lp
       });
     }
 
@@ -187,6 +335,7 @@ export default function LiveClassRoomPage() {
       let meta: any = {};
       try { meta = JSON.parse(rp.metadata || '{}'); } catch {}
       const isRemoteHost = meta.role === 'SUPER_ADMIN' || meta.role === 'COUNTRY_SUPERVISOR';
+      const vTrack = getParticipantVideoTrack(rp);
       list.push({
         identity: rp.identity,
         name: rp.name || 'مشارك',
@@ -194,7 +343,9 @@ export default function LiveClassRoomPage() {
         isHost: isRemoteHost,
         isAudioOn: rp.isMicrophoneEnabled,
         isVideoOn: rp.isCameraEnabled,
-        isSpeaking: rp.isSpeaking
+        isSpeaking: rp.isSpeaking,
+        videoTrack: vTrack,
+        participant: rp
       });
     });
 
@@ -224,7 +375,8 @@ export default function LiveClassRoomPage() {
     const connectToLiveKit = async () => {
       try {
         setConnectionStatus('connecting');
-        const roomName = classData.roomName || `room_${classData.countryId}_${classData.id}`;
+        const normalizedRoomId = classId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const roomName = `live_class_${normalizedRoomId}`;
         const myName = profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف المعتمد' : 'طالب');
         const myRole = isSuperAdmin ? 'SUPER_ADMIN' : isCountrySupervisor ? 'COUNTRY_SUPERVISOR' : 'STUDENT';
 
@@ -748,6 +900,16 @@ export default function LiveClassRoomPage() {
             <span>المشرف: <strong className="text-white">{classData.supervisorName || 'المشرف المعتمد'}</strong></span>
           </div>
 
+          {/* Layout Mode Toggle: Grid / Stage */}
+          <button
+            onClick={() => setViewMode(prev => prev === 'gallery' ? 'speaker' : 'gallery')}
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700"
+            title={viewMode === 'gallery' ? 'التبديل إلى وضع المنصة الرئيسية' : 'التبديل إلى شبكة المشتركين (زووم)'}
+          >
+            <LayoutGrid className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">{viewMode === 'gallery' ? 'عرض المنصة' : 'شبكة المشتركين'}</span>
+          </button>
+
           <button
             onClick={handleCopyLink}
             className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700"
@@ -771,88 +933,130 @@ export default function LiveClassRoomPage() {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         {/* VIDEO & PRESENTATION STAGE */}
         <div className="flex-1 bg-slate-950 flex flex-col justify-between p-3 sm:p-5 relative overflow-hidden">
-          {/* Main Visual Stage */}
-          <div className="flex-1 bg-slate-900/90 rounded-3xl border border-slate-800/80 relative overflow-hidden flex flex-col items-center justify-center shadow-inner group">
-            {/* Screen Share Video Stream */}
-            <video
-              ref={screenVideoRef}
-              autoPlay
-              playsInline
-              className={`w-full h-full object-contain ${isScreenSharing ? 'block' : 'hidden'}`}
-            />
-
-            {/* Camera Video Stream */}
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`w-full h-full object-cover ${isCamOn && !isScreenSharing ? 'block' : 'hidden'}`}
-            />
-
-            {/* Placeholder when No Video or Screen Share Active */}
-            {!isCamOn && !isScreenSharing && (
-              <div className="text-center p-8 space-y-4 max-w-md">
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-2xl relative">
-                  <Radio className="w-12 h-12 text-emerald-400 animate-pulse" />
-                  <div className="absolute -bottom-2 px-3 py-0.5 rounded-full bg-emerald-500 text-[10px] font-bold text-slate-950 shadow-md">
-                    بث مباشر
+          {/* Main Visual Stage / Zoom-Style Multi-Participant Grid */}
+          <div className="flex-1 bg-slate-900/90 rounded-3xl border border-slate-800/80 relative overflow-hidden flex flex-col p-3 shadow-inner group">
+            {/* 1. SCREEN SHARING OVERLAY (Takes Full Stage if active) */}
+            {isScreenSharing ? (
+              <div className="relative w-full h-full flex items-center justify-center bg-black rounded-2xl overflow-hidden">
+                <video
+                  ref={screenVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+                {/* PiP Local Video */}
+                {isCamOn && (
+                  <div className="absolute bottom-4 right-4 w-44 h-28 bg-slate-950 rounded-2xl border-2 border-emerald-500/80 overflow-hidden shadow-2xl z-20">
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
                   </div>
+                )}
+              </div>
+            ) : viewMode === 'gallery' ? (
+              /* 2. ZOOM / MEET MULTI-PARTICIPANT DYNAMIC GALLERY GRID */
+              <div className="w-full h-full flex flex-col justify-center overflow-y-auto">
+                <div
+                  className={`w-full h-full grid gap-3 p-1 sm:p-2 ${
+                    participants.length <= 1
+                      ? 'grid-cols-1'
+                      : participants.length === 2
+                      ? 'grid-cols-1 md:grid-cols-2'
+                      : participants.length <= 4
+                      ? 'grid-cols-1 sm:grid-cols-2'
+                      : participants.length <= 6
+                      ? 'grid-cols-2 sm:grid-cols-3'
+                      : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'
+                  }`}
+                >
+                  {participants.map((p) => (
+                    <ParticipantTile
+                      key={p.identity}
+                      participantInfo={p}
+                      isActiveSpeaker={activeSpeakerId === p.identity}
+                    />
+                  ))}
                 </div>
-                <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-white">{classData.title}</h3>
-                  <p className="text-xs text-slate-400">
-                    بإشراف {isSupervisorForThisClass ? 'حضرتك (مشرف الغرفة)' : `المشرف ${classData.supervisorName || 'المعتمد'}`}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                  <button
-                    onClick={toggleCamera}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md"
-                  >
-                    <Camera className="w-4 h-4" />
-                    <span>تشغيل الكاميرا 📹</span>
-                  </button>
-                  <button
-                    onClick={toggleMic}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all"
-                  >
-                    <Mic className="w-4 h-4" />
-                    <span>تشغيل المايك 🎙️</span>
-                  </button>
+              </div>
+            ) : (
+              /* 3. SPEAKER / STAGE MODE (Zoom Focus View) */
+              <div className="relative w-full h-full flex items-center justify-center rounded-2xl overflow-hidden bg-slate-950">
+                {isCamOn ? (
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center p-8 space-y-4 max-w-md">
+                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-2xl relative">
+                      <Radio className="w-12 h-12 text-emerald-400 animate-pulse" />
+                      <div className="absolute -bottom-2 px-3 py-0.5 rounded-full bg-emerald-500 text-[10px] font-bold text-slate-950 shadow-md">
+                        بث مباشر
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-bold text-white">{classData.title}</h3>
+                      <p className="text-xs text-slate-400">
+                        بإشراف {isSupervisorForThisClass ? 'حضرتك (مشرف الغرفة)' : `المشرف ${classData.supervisorName || 'المعتمد'}`}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                      <button
+                        onClick={toggleCamera}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>تشغيل الكاميرا 📹</span>
+                      </button>
+                      <button
+                        onClick={toggleMic}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all"
+                      >
+                        <Mic className="w-4 h-4" />
+                        <span>تشغيل المايك 🎙️</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Floating Attendee Tiles in Speaker Mode */}
+                <div className="absolute top-4 right-4 flex items-center gap-2 max-w-md overflow-x-auto z-10">
+                  {participants.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className={`w-28 h-20 rounded-2xl bg-slate-950/90 border flex flex-col items-center justify-center relative overflow-hidden shadow-xl transition-all ${
+                        activeSpeakerId === p.identity ? 'border-emerald-400 ring-2 ring-emerald-400/50 scale-105' : 'border-slate-800'
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-200">
+                        {p.name.charAt(0)}
+                      </div>
+                      <span className="text-[10px] text-slate-300 font-semibold truncate max-w-[90px] mt-1 px-1">
+                        {p.name}
+                      </span>
+                      <div className="absolute top-1.5 left-1.5">
+                        {p.isAudioOn ? (
+                          <Volume2 className="w-3 h-3 text-emerald-400 animate-pulse" />
+                        ) : (
+                          <MicOff className="w-3 h-3 text-red-400" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Gallery Overlay: Video Tiles for All Attendees (Zoom / Meet Style) */}
-            <div className="absolute top-4 right-4 flex items-center gap-2 max-w-md overflow-x-auto z-10">
-              {participants.map((p, idx) => (
-                <div
-                  key={idx}
-                  className={`w-28 h-20 rounded-2xl bg-slate-950/90 border flex flex-col items-center justify-center relative overflow-hidden shadow-xl transition-all ${
-                    activeSpeakerId === p.identity ? 'border-emerald-400 ring-2 ring-emerald-400/50 scale-105' : 'border-slate-800'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-200">
-                    {p.name.charAt(0)}
-                  </div>
-                  <span className="text-[10px] text-slate-300 font-semibold truncate max-w-[90px] mt-1 px-1">
-                    {p.name}
-                  </span>
-                  <div className="absolute top-1.5 left-1.5">
-                    {p.isAudioOn ? (
-                      <Volume2 className="w-3 h-3 text-emerald-400 animate-pulse" />
-                    ) : (
-                      <MicOff className="w-3 h-3 text-red-400" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {/* Top Left Attendees Badge */}
-            <div className="absolute top-4 left-4 flex items-center gap-2">
-              <span className="px-3 py-1 rounded-xl bg-slate-950/80 backdrop-blur-md text-xs font-bold text-slate-200 border border-slate-700/80 flex items-center gap-1.5 shadow-lg">
+            <div className="absolute top-4 left-4 flex items-center gap-2 z-20">
+              <span className="px-3 py-1 rounded-xl bg-slate-950/85 backdrop-blur-md text-xs font-bold text-slate-200 border border-slate-700/80 flex items-center gap-1.5 shadow-lg">
                 <Users className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{participants.length} حاضر متصل</span>
               </span>
@@ -863,19 +1067,6 @@ export default function LiveClassRoomPage() {
                 </span>
               )}
             </div>
-
-            {/* PiP Local Video Thumbnail (if screen sharing is active & camera is on) */}
-            {isScreenSharing && isCamOn && (
-              <div className="absolute bottom-4 right-4 w-48 h-32 bg-slate-950 rounded-2xl border-2 border-emerald-500/60 overflow-hidden shadow-2xl">
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
           </div>
 
           {/* BOTTOM CONTROLS BAR */}

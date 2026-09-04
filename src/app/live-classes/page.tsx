@@ -90,13 +90,28 @@ export default function LiveClassesPage() {
       const res = await fetch(`/api/live-classes?userId=${user?.uid || ''}&role=${profile?.role || 'STUDENT'}&country=${userCountry || 'sa'}&targetCountry=${selectedCountryFilter}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.classes)) {
-        // Merge API with any local items to prevent loss
+        // Merge API with local items using a Map keyed by id
         const map = new Map<string, LiveClass>();
-        data.classes.forEach((c: LiveClass) => map.set(c.id, c));
+        // First insert local classes
         localList.forEach((c: LiveClass) => {
-          if (!map.has(c.id)) map.set(c.id, c);
+          if (c && c.id) map.set(c.id, c);
         });
-        const merged = Array.from(map.values());
+        // Then merge server classes (giving preference to active/live status)
+        data.classes.forEach((c: LiveClass) => {
+          if (c && c.id) {
+            const existing = map.get(c.id);
+            if (!existing) {
+              map.set(c.id, c);
+            } else {
+              // If existing was locally started as live, preserve live status
+              const statusOrder: Record<string, number> = { 'ended': 3, 'live': 2, 'scheduled': 1 };
+              const existingScore = statusOrder[(existing.status || '').toLowerCase()] || 0;
+              const newScore = statusOrder[(c.status || '').toLowerCase()] || 0;
+              map.set(c.id, newScore >= existingScore ? c : existing);
+            }
+          }
+        });
+        const merged = Array.from(map.values()).sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
         setClasses(merged);
         if (typeof window !== 'undefined') {
           localStorage.setItem(LIVE_CLASSES_STORAGE_KEY, JSON.stringify(merged));
@@ -189,7 +204,7 @@ export default function LiveClassesPage() {
     setModalSubmitting(true);
     const scheduledDateTime = new Date(`${formScheduledDate}T${formScheduledTime}`).toISOString();
     const classId = `class_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const roomName = `room_${formCountry}_${classId}`;
+    const roomName = `live_class_${classId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
     const newClassItem: LiveClass = {
       id: classId,
@@ -237,6 +252,8 @@ export default function LiveClassesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: newClassItem.id,
+          roomName: newClassItem.roomName,
           title: newClassItem.title,
           description: newClassItem.description,
           countryId: newClassItem.countryId,
