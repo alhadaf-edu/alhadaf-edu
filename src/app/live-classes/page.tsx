@@ -31,7 +31,28 @@ import {
 import Link from 'next/link';
 import IslamicPattern from '@/components/layout/IslamicPattern';
 
-const LIVE_CLASSES_STORAGE_KEY = 'alhadaf_live_classes_v2';
+const LIVE_CLASSES_STORAGE_KEY = 'alhadaf_live_classes_v3';
+
+// Helper to determine accurate real-time status based on time and manual actions
+function resolveClassStatus(item: LiveClass): 'live' | 'scheduled' | 'ended' {
+  const manualStatus = (item.status || '').toLowerCase();
+  if (manualStatus === 'ended') return 'ended';
+  if (manualStatus === 'live') return 'live';
+
+  const scheduledTime = new Date(item.scheduledAt).getTime();
+  const now = Date.now();
+
+  // If scheduled time has arrived or passed within 2 hours: it is LIVE now
+  if (now >= scheduledTime && now < scheduledTime + 2 * 60 * 60 * 1000) {
+    return 'live';
+  }
+  // If more than 2 hours passed: it is automatically ENDED
+  if (now >= scheduledTime + 2 * 60 * 60 * 1000) {
+    return 'ended';
+  }
+  // If scheduled time is in the future: strictly SCHEDULED (مجدولة)
+  return 'scheduled';
+}
 
 export default function LiveClassesPage() {
   const { user, profile, isSuperAdmin, isCountrySupervisor, isStudent, userCountry } = useAuth();
@@ -73,6 +94,12 @@ export default function LiveClassesPage() {
   // Fetch classes from backend API with instant localStorage cache
   const fetchClasses = useCallback(async () => {
     try {
+      // 0. Clean legacy storage keys if any
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('alhadaf_live_classes_v2');
+        localStorage.removeItem('alhadaf_live_classes');
+      }
+
       // 1. Instant Cache from LocalStorage
       let localList: LiveClass[] = [];
       const cached = typeof window !== 'undefined' ? localStorage.getItem(LIVE_CLASSES_STORAGE_KEY) : null;
@@ -97,11 +124,10 @@ export default function LiveClassesPage() {
 
         // Merge API with local items using a Map keyed by id
         const map = new Map<string, LiveClass>();
-        // First insert valid local classes
         localList.forEach((c: LiveClass) => {
           if (c && c.id && !deletedSet.has(c.id)) map.set(c.id, c);
         });
-        // Then merge server classes (giving preference to active/live status)
+
         data.classes.forEach((c: LiveClass) => {
           if (c && c.id && !deletedSet.has(c.id)) {
             const existing = map.get(c.id);
@@ -115,7 +141,14 @@ export default function LiveClassesPage() {
             }
           }
         });
-        const merged = Array.from(map.values()).sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
+
+        // Apply dynamic resolved status based on exact schedule time
+        const resolvedList = Array.from(map.values()).map((c) => {
+          const effectiveStatus = resolveClassStatus(c);
+          return { ...c, status: effectiveStatus };
+        });
+
+        const merged = resolvedList.sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
         setClasses(merged);
         if (typeof window !== 'undefined') {
           localStorage.setItem(LIVE_CLASSES_STORAGE_KEY, JSON.stringify(merged));

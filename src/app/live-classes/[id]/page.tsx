@@ -216,7 +216,7 @@ export default function LiveClassRoomPage() {
     const loadClass = async () => {
       // Local cache
       if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem('alhadaf_live_classes_v2');
+        const cached = localStorage.getItem('alhadaf_live_classes_v3');
         if (cached) {
           try {
             const list: LiveClass[] = JSON.parse(cached);
@@ -428,6 +428,34 @@ export default function LiveClassRoomPage() {
             setConnectionStatus('connected');
             showToast('🟢 تم الاتصال بالغرفة الافتراضية بنجاح!');
             syncParticipantsList(room);
+
+            // Automatically transition class status to 'live' when room is active
+            if (classData && (classData.status || '').toLowerCase() === 'scheduled') {
+              setClassData(prev => prev ? { ...prev, status: 'live' } : null);
+              if (typeof window !== 'undefined') {
+                const cached = localStorage.getItem('alhadaf_live_classes_v3');
+                if (cached) {
+                  try {
+                    const list: LiveClass[] = JSON.parse(cached);
+                    const updated = list.map(c => c.id === classId ? { ...c, status: 'live' as const } : c);
+                    localStorage.setItem('alhadaf_live_classes_v3', JSON.stringify(updated));
+                  } catch {}
+                }
+              }
+              // Sync to server
+              fetch('/api/live-classes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: classId,
+                  status: 'live',
+                  userId: user?.uid,
+                  role: profile?.role,
+                  userEmail: user?.email,
+                  country: userCountry
+                })
+              }).catch(() => {});
+            }
           })
           .on(RoomEvent.Reconnecting, () => {
             if (!isMounted) return;
