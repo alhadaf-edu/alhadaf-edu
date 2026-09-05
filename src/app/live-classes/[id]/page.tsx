@@ -54,7 +54,12 @@ import {
   Palette,
   X,
   Sliders,
-  Download
+  Download,
+  Upload,
+  FileText,
+  GripHorizontal,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -199,6 +204,23 @@ export default function LiveClassRoomPage() {
   const [annotationSize, setAnnotationSize] = useState<number>(4);
   const [isDrawing, setIsDrawing] = useState(false);
   const annotationCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Draggable toolbar position
+  const [toolbarPos, setToolbarPos] = useState<{x: number; y: number}>({ x: 16, y: 16 });
+  const isDraggingToolbar = useRef(false);
+  const dragOffset = useRef<{x: number; y: number}>({ x: 0, y: 0 });
+
+  // Interactive Whiteboard State (سبورة بيضاء تفاعلية)
+  const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
+  const whiteboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [wbTool, setWbTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
+  const [wbColor, setWbColor] = useState('#ef4444');
+  const [wbSize, setWbSize] = useState(4);
+  const [isWbDrawing, setIsWbDrawing] = useState(false);
+  const wbLastPoint = useRef<{x: number; y: number} | null>(null);
+
+  // File Sharing State (مشاركة ملف - PDF / صورة / عرض تقديمي)
+  const [sharedFile, setSharedFile] = useState<{name: string; type: string; url: string} | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Recording State (تسجيل الحصة وحفظها على الجهاز)
   const [isRecording, setIsRecording] = useState(false);
@@ -213,6 +235,11 @@ export default function LiveClassRoomPage() {
   const screenVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideosContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Stable refs to prevent LiveKit connection re-triggering on every state change
+  const hasConnectedRef = useRef(false);
+  const isSupervisorRef = useRef(false);
+  const profileNameRef = useRef<string>('');
+  const syncParticipantsRef = useRef<((room: Room) => void) | null>(null);
 
   // Real-Time Connected Participants & Chat
   const [participants, setParticipants] = useState<ParticipantInfo[]>([]);
@@ -224,6 +251,10 @@ export default function LiveClassRoomPage() {
   const isSupervisorForThisClass =
     isSuperAdmin ||
     (isCountrySupervisor && (userCountry === classData?.countryId || profile?.assignedCountry === classData?.countryId));
+
+  // Keep stable refs up-to-date every render (used inside LiveKit connection effect to avoid re-connection)
+  isSupervisorRef.current = isSupervisorForThisClass;
+  profileNameRef.current = profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف المعتمد' : 'طالب');
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -414,9 +445,12 @@ export default function LiveClassRoomPage() {
     setParticipants(list);
   }, [isSupervisorForThisClass, isSuperAdmin, isCountrySupervisor, profile, user]);
 
+  // Keep ref synced so connection effect uses latest without re-connecting
+  syncParticipantsRef.current = syncParticipantsList;
+
   // 2. Connect to LiveKit Cloud Serverless WebRTC Room
   useEffect(() => {
-    if (!classData) return;
+    if (!classData?.id) return;
 
     let isMounted = true;
     const room = new Room({
@@ -437,10 +471,10 @@ export default function LiveClassRoomPage() {
     const connectToLiveKit = async () => {
       try {
         setConnectionStatus('connecting');
-        const normalizedRoomId = classId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const normalizedRoomId = classData.id.replace(/[^a-zA-Z0-9_-]/g, '_');
         const roomName = `live_class_${normalizedRoomId}`;
-        const myName = profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف المعتمد' : 'طالب');
-        const myRole = isSuperAdmin ? 'SUPER_ADMIN' : isCountrySupervisor ? 'COUNTRY_SUPERVISOR' : 'STUDENT';
+        const myName = profileNameRef.current;
+        const myRole = isSupervisorRef.current ? (isSuperAdmin ? 'SUPER_ADMIN' : 'COUNTRY_SUPERVISOR') : 'STUDENT';
 
         // 1. Fetch Secure LiveKit Access Token
         const tokenRes = await fetch('/api/livekit/token', {
@@ -454,7 +488,7 @@ export default function LiveClassRoomPage() {
             userEmail: user?.email || '',
             userCountry: userCountry || 'sa',
             classCountry: classData.countryId || 'sa',
-            isHostRequest: isSupervisorForThisClass
+            isHostRequest: isSupervisorRef.current
           })
         });
 
@@ -465,15 +499,15 @@ export default function LiveClassRoomPage() {
 
         if (!isMounted) return;
 
-        // 2. Setup Room Event Listeners (Zoom / Google Meet Style Real-Time Events)
+        // 2. Setup Room Event Listeners
         room
           .on(RoomEvent.Connected, () => {
             if (!isMounted) return;
             setConnectionStatus('connected');
             showToast('🟢 تم الاتصال بالغرفة الافتراضية بنجاح!');
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
 
-            // Automatically transition class status to 'live' when room is active
+            // Transition class status to 'live'
             if (classData && (classData.status || '').toLowerCase() === 'scheduled') {
               setClassData(prev => prev ? { ...prev, status: 'live' } : null);
               if (typeof window !== 'undefined') {
@@ -481,17 +515,16 @@ export default function LiveClassRoomPage() {
                 if (cached) {
                   try {
                     const list: LiveClass[] = JSON.parse(cached);
-                    const updated = list.map(c => c.id === classId ? { ...c, status: 'live' as const } : c);
+                    const updated = list.map(c => c.id === classData.id ? { ...c, status: 'live' as const } : c);
                     localStorage.setItem('alhadaf_live_classes_v3', JSON.stringify(updated));
                   } catch {}
                 }
               }
-              // Sync to server
               fetch('/api/live-classes', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  id: classId,
+                  id: classData.id,
                   status: 'live',
                   userId: user?.uid,
                   role: profile?.role,
@@ -510,7 +543,7 @@ export default function LiveClassRoomPage() {
             if (!isMounted) return;
             setConnectionStatus('connected');
             showToast('🟢 تم استعادة الاتصال بالغرفة!');
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
           })
           .on(RoomEvent.Disconnected, () => {
             if (!isMounted) return;
@@ -518,40 +551,31 @@ export default function LiveClassRoomPage() {
           })
           .on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
             if (!isMounted) return;
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
             showToast(`👋 انضم ${p.name || 'مشارك جديد'} إلى الحصة`);
           })
-          .on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
+          .on(RoomEvent.ParticipantDisconnected, () => {
             if (!isMounted) return;
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
           })
           .on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
             if (!isMounted) return;
-            if (speakers.length > 0) {
-              setActiveSpeakerId(speakers[0].identity);
-            } else {
-              setActiveSpeakerId(null);
-            }
-            syncParticipantsList(room);
+            setActiveSpeakerId(speakers.length > 0 ? speakers[0].identity : null);
+            syncParticipantsRef.current?.(room);
           })
           .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication, participant: RemoteParticipant) => {
             if (!isMounted) return;
-            // Attach Audio Track
             if (track.kind === Track.Kind.Audio) {
               const audioElement = track.attach();
               audioElement.id = `audio_${participant.identity}`;
               document.body.appendChild(audioElement);
             }
-            // Screen Share Track → show on main stage for ALL participants
-            if (track.kind === Track.Kind.Video) {
-              if (publication.source === Track.Source.ScreenShare) {
-                setScreenTrack(track);
-                setIsScreenSharing(true);
-                setScreenSharePresenter(participant.name || 'مشارك');
-              }
-              // Remote camera tracks are handled by ParticipantTile via participants list
+            if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
+              setScreenTrack(track);
+              setIsScreenSharing(true);
+              setScreenSharePresenter(participant.name || 'مشارك');
             }
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
           })
           .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, publication, participant: RemoteParticipant) => {
             if (!isMounted) return;
@@ -563,18 +587,16 @@ export default function LiveClassRoomPage() {
               setIsScreenSharing(false);
               setScreenSharePresenter('');
             }
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
           })
           .on(RoomEvent.LocalTrackPublished, (publication) => {
             if (!isMounted) return;
             if (publication.source === Track.Source.ScreenShare && publication.track) {
               setScreenTrack(publication.track);
               setIsScreenSharing(true);
-              setScreenSharePresenter(
-                profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف' : 'طالب')
-              );
+              setScreenSharePresenter(profileNameRef.current);
             }
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
           })
           .on(RoomEvent.LocalTrackUnpublished, (publication) => {
             if (!isMounted) return;
@@ -583,11 +605,11 @@ export default function LiveClassRoomPage() {
               setIsScreenSharing(false);
               setScreenSharePresenter('');
             }
-            syncParticipantsList(room);
+            syncParticipantsRef.current?.(room);
           })
-          .on(RoomEvent.TrackMuted, () => syncParticipantsList(room))
-          .on(RoomEvent.TrackUnmuted, () => syncParticipantsList(room))
-          .on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
+          .on(RoomEvent.TrackMuted, () => syncParticipantsRef.current?.(room))
+          .on(RoomEvent.TrackUnmuted, () => syncParticipantsRef.current?.(room))
+          .on(RoomEvent.DataReceived, (payload: Uint8Array) => {
             if (!isMounted) return;
             try {
               const text = new TextDecoder().decode(payload);
@@ -607,9 +629,61 @@ export default function LiveClassRoomPage() {
                 }
               } else if (data.type === 'class_deleted') {
                 showToast('⚠️ قام المشرف بحذف هذه الحصة');
-                setTimeout(() => {
-                  router.push('/live-classes');
-                }, 1500);
+                setTimeout(() => { router.push('/live-classes'); }, 1500);
+              } else if (data.type === 'whiteboard_open') {
+                setIsWhiteboardActive(true);
+                showToast('📋 فتح المشرف السبورة البيضاء التفاعلية');
+              } else if (data.type === 'whiteboard_close') {
+                setIsWhiteboardActive(false);
+                showToast('📋 أغلق المشرف السبورة البيضاء');
+              } else if (data.type === 'whiteboard_stroke') {
+                // Render remote stroke on whiteboard
+                const canvas = whiteboardCanvasRef.current;
+                if (canvas && data.stroke?.points?.length > 1) {
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) {
+                    ctx.beginPath();
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    if (data.stroke.tool === 'eraser') {
+                      ctx.globalCompositeOperation = 'destination-out';
+                      ctx.lineWidth = data.stroke.size * 7;
+                      ctx.strokeStyle = 'rgba(0,0,0,1)';
+                    } else if (data.stroke.tool === 'highlighter') {
+                      ctx.globalCompositeOperation = 'source-over';
+                      ctx.lineWidth = data.stroke.size * 4.5;
+                      ctx.strokeStyle = data.stroke.color + '55';
+                    } else {
+                      ctx.globalCompositeOperation = 'source-over';
+                      ctx.lineWidth = data.stroke.size;
+                      ctx.strokeStyle = data.stroke.color;
+                    }
+                    const pts = data.stroke.points;
+                    ctx.moveTo(pts[0][0], pts[0][1]);
+                    for (let i = 1; i < pts.length; i++) {
+                      ctx.lineTo(pts[i][0], pts[i][1]);
+                    }
+                    ctx.stroke();
+                    ctx.closePath();
+                    ctx.globalCompositeOperation = 'source-over';
+                  }
+                }
+              } else if (data.type === 'whiteboard_clear') {
+                const canvas = whiteboardCanvasRef.current;
+                if (canvas) {
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  }
+                }
+                showToast('🧹 مسح المشرف السبورة');
+              } else if (data.type === 'file_share') {
+                setSharedFile(data.file);
+                showToast(`📄 المشرف شارك ملف: ${data.file.name}`);
+              } else if (data.type === 'file_close') {
+                setSharedFile(null);
+                showToast('📄 أغلق المشرف الملف المشارك');
               }
             } catch {}
           });
@@ -629,8 +703,13 @@ export default function LiveClassRoomPage() {
           }
         ]);
       } catch (err: any) {
-        console.warn('LiveKit Room connection note (fallback active):', err);
-        setConnectionStatus('connected');
+        console.error('LiveKit connection error:', err);
+        if (isMounted) {
+          setConnectionStatus('disconnected');
+          showToast('⚠️ تعذر الاتصال بسيرفر البث — جاري المحاولة مرة أخرى...');
+          // Auto-retry after 3 seconds
+          setTimeout(() => { if (isMounted) connectToLiveKit(); }, 3000);
+        }
       }
     };
 
@@ -642,7 +721,8 @@ export default function LiveClassRoomPage() {
         room.disconnect();
       }
     };
-  }, [classData, isSupervisorForThisClass, isSuperAdmin, isCountrySupervisor, profile, user, userCountry, syncParticipantsList]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classData?.id]);
 
   // Scroll chat to bottom
   useEffect(() => {
@@ -839,6 +919,167 @@ export default function LiveClassRoomPage() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     showToast('🧹 تم مسح كل الرسومات والتحديدات');
+  };
+
+  // ========== DRAGGABLE TOOLBAR HANDLERS ==========
+  const handleToolbarMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    isDraggingToolbar.current = true;
+    dragOffset.current = { x: e.clientX - toolbarPos.x, y: e.clientY - toolbarPos.y };
+  };
+  const handleToolbarMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingToolbar.current) return;
+    setToolbarPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+  }, []);
+  const handleToolbarMouseUp = useCallback(() => { isDraggingToolbar.current = false; }, []);
+  useEffect(() => {
+    window.addEventListener('mousemove', handleToolbarMouseMove);
+    window.addEventListener('mouseup', handleToolbarMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleToolbarMouseMove);
+      window.removeEventListener('mouseup', handleToolbarMouseUp);
+    };
+  }, [handleToolbarMouseMove, handleToolbarMouseUp]);
+
+  // ========== INTERACTIVE WHITEBOARD HANDLERS (سبورة بيضاء تفاعلية) ==========
+  const openWhiteboard = () => {
+    setIsWhiteboardActive(true);
+    // Init canvas with white background
+    setTimeout(() => {
+      const canvas = whiteboardCanvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+      }
+    }, 50);
+    const room = roomRef.current;
+    if (room?.localParticipant) {
+      const payload = new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_open' }));
+      room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+    }
+    showToast('📋 تم فتح السبورة البيضاء — يمكنك الشرح والرسم الآن');
+  };
+
+  const closeWhiteboard = () => {
+    setIsWhiteboardActive(false);
+    const room = roomRef.current;
+    if (room?.localParticipant) {
+      const payload = new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_close' }));
+      room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+    }
+    showToast('📋 تم إغلاق السبورة البيضاء');
+  };
+
+  const startWbDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isSupervisorForThisClass) return;
+    const canvas = whiteboardCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    wbLastPoint.current = { x, y };
+    setIsWbDrawing(true);
+  };
+
+  const drawOnWhiteboard = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isWbDrawing || !isSupervisorForThisClass) return;
+    const canvas = whiteboardCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (wbTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = wbSize * 7; ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else if (wbTool === 'highlighter') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = wbSize * 4.5; ctx.strokeStyle = wbColor + '55';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = wbSize; ctx.strokeStyle = wbColor;
+    }
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    // Broadcast stroke segment in real-time
+    const room = roomRef.current;
+    if (room?.localParticipant && wbLastPoint.current) {
+      const payload = new TextEncoder().encode(JSON.stringify({
+        type: 'whiteboard_stroke',
+        stroke: { tool: wbTool, color: wbColor, size: wbSize, points: [[wbLastPoint.current.x, wbLastPoint.current.y], [x, y]] }
+      }));
+      room.localParticipant.publishData(payload, { reliable: false }).catch(() => {});
+    }
+    wbLastPoint.current = { x, y };
+  };
+
+  const stopWbDrawing = () => {
+    if (!isWbDrawing) return;
+    const canvas = whiteboardCanvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) { ctx.closePath(); ctx.globalCompositeOperation = 'source-over'; }
+    }
+    wbLastPoint.current = null;
+    setIsWbDrawing(false);
+  };
+
+  const clearWhiteboard = () => {
+    const canvas = whiteboardCanvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    }
+    const room = roomRef.current;
+    if (room?.localParticipant) {
+      const payload = new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_clear' }));
+      room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+    }
+    showToast('🧹 تم مسح السبورة البيضاء');
+  };
+
+  // ========== FILE SHARING HANDLERS (مشاركة ملف - PDF / صورة / عرض) ==========
+  const handleFileShare = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Limit file size to 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('⚠️ حجم الملف كبير جداً — الحد الأقصى 10 ميجابايت');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = reader.result as string;
+      const fileInfo = { name: file.name, type: file.type, url };
+      setSharedFile(fileInfo);
+      const room = roomRef.current;
+      if (room?.localParticipant) {
+        const payload = new TextEncoder().encode(JSON.stringify({ type: 'file_share', file: fileInfo }));
+        room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+      }
+      showToast(`📄 تم مشاركة الملف: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const closeFileShare = () => {
+    setSharedFile(null);
+    const room = roomRef.current;
+    if (room?.localParticipant) {
+      const payload = new TextEncoder().encode(JSON.stringify({ type: 'file_close' }));
+      room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+    }
+    showToast('📄 تم إغلاق الملف المشارك');
   };
 
   // 7. Student Raise Hand Broadcast
@@ -1165,8 +1406,77 @@ export default function LiveClassRoomPage() {
         <div className="flex-1 bg-slate-950 flex flex-col justify-between p-3 sm:p-5 relative overflow-hidden">
           {/* Main Visual Stage / Zoom-Style Multi-Participant Grid */}
           <div className="flex-1 bg-slate-900/90 rounded-3xl border border-slate-800/80 relative overflow-hidden flex flex-col p-3 shadow-inner group">
-            {/* 1. SCREEN SHARING OVERLAY (Takes Full Stage if active) */}
-            {isScreenSharing ? (
+            {/* 0. WHITEBOARD MODE (takes priority) */}
+            {isWhiteboardActive ? (
+              <div className="relative w-full h-full flex items-center justify-center bg-white rounded-2xl overflow-hidden">
+                <canvas
+                  ref={whiteboardCanvasRef}
+                  width={1920}
+                  height={1080}
+                  onMouseDown={startWbDrawing}
+                  onMouseMove={drawOnWhiteboard}
+                  onMouseUp={stopWbDrawing}
+                  onMouseLeave={stopWbDrawing}
+                  onTouchStart={startWbDrawing}
+                  onTouchMove={drawOnWhiteboard}
+                  onTouchEnd={stopWbDrawing}
+                  className={`w-full h-full ${isSupervisorForThisClass ? 'cursor-crosshair' : 'cursor-default'}`}
+                  style={{ touchAction: 'none' }}
+                />
+                {/* Whiteboard Badge */}
+                <div className="absolute top-3 right-3 z-20 flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-purple-500/40 text-xs font-bold text-purple-300 shadow-xl">
+                  <BookOpen className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                  <span>السبورة البيضاء التفاعلية</span>
+                </div>
+                {/* Whiteboard Toolbar (supervisor only) */}
+                {isSupervisorForThisClass && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/96 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-2 animate-fade-in">
+                    <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 gap-1">
+                      <button onClick={() => setWbTool('pen')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${wbTool === 'pen' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}><PenTool className="w-3.5 h-3.5" /><span className="hidden sm:inline">قلم</span></button>
+                      <button onClick={() => setWbTool('highlighter')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${wbTool === 'highlighter' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}><Paintbrush className="w-3.5 h-3.5" /><span className="hidden sm:inline">فرشاة</span></button>
+                      <button onClick={() => setWbTool('eraser')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${wbTool === 'eraser' ? 'bg-red-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}><Eraser className="w-3.5 h-3.5" /><span className="hidden sm:inline">ممحاة</span></button>
+                    </div>
+                    {wbTool !== 'eraser' && (
+                      <div className="flex items-center gap-1.5 bg-slate-950/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
+                        {['#ef4444','#eab308','#10b981','#38bdf8','#f97316','#1e293b','#8b5cf6'].map(c => (
+                          <button key={c} onClick={() => setWbColor(c)} className={`w-5 h-5 rounded-full transition-transform border ${wbColor === c ? 'scale-125 ring-2 ring-white border-white' : 'border-slate-700 hover:scale-110'}`} style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 bg-slate-950/80 px-2 py-1.5 rounded-xl border border-slate-800">
+                      {[{size:3,label:'رفيع'},{size:6,label:'متوسط'},{size:12,label:'عريض'}].map(s => (
+                        <button key={s.size} onClick={() => setWbSize(s.size)} className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all ${wbSize === s.size ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>{s.label}</button>
+                      ))}
+                    </div>
+                    <button onClick={clearWhiteboard} className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /><span className="hidden md:inline">مسح</span></button>
+                    <button onClick={closeWhiteboard} className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"><X className="w-4 h-4" /></button>
+                  </div>
+                )}
+              </div>
+            ) : sharedFile ? (
+              /* FILE VIEWER MODE */
+              <div className="relative w-full h-full flex items-center justify-center bg-slate-950 rounded-2xl overflow-hidden">
+                {sharedFile.type.startsWith('image/') ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={sharedFile.url} alt={sharedFile.name} className="max-w-full max-h-full object-contain" />
+                ) : sharedFile.type === 'application/pdf' ? (
+                  <iframe src={sharedFile.url} className="w-full h-full border-0 rounded-2xl" title={sharedFile.name} />
+                ) : (
+                  <div className="text-center p-8 space-y-4">
+                    <FileText className="w-16 h-16 text-slate-400 mx-auto" />
+                    <p className="text-slate-300 font-bold text-lg">{sharedFile.name}</p>
+                    <a href={sharedFile.url} download={sharedFile.name} className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold"><Download className="w-4 h-4" />تحميل الملف</a>
+                  </div>
+                )}
+                <div className="absolute top-3 right-3 z-20 flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-teal-500/40 text-xs font-bold text-teal-300 shadow-xl">
+                  <FileText className="w-3.5 h-3.5 text-teal-400" />
+                  <span>ملف مشارك: {sharedFile.name}</span>
+                </div>
+                {isSupervisorForThisClass && (
+                  <button onClick={closeFileShare} className="absolute top-3 left-3 z-20 p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30" title="إغلاق الملف"><X className="w-4 h-4" /></button>
+                )}
+              </div>
+            ) : isScreenSharing ? (
               <div className="relative w-full h-full flex items-center justify-center bg-black rounded-2xl overflow-hidden">
                 <video
                   ref={screenVideoRef}
@@ -1306,9 +1616,20 @@ export default function LiveClassRoomPage() {
               }`}
             />
 
-            {/* FLOATING ANNOTATION TOOLBAR (قلم عائم، فرشاة، ممحاة، ألوان، مسح) */}
+            {/* FLOATING ANNOTATION TOOLBAR — DRAGGABLE (قلم عائم قابل للسحب في كل مكان) */}
             {isAnnotationOpen && (
-              <div className="absolute top-4 left-4 z-40 bg-slate-900/95 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-2 max-w-[95%] animate-fade-in">
+              <div
+                className="fixed z-50 bg-slate-900/97 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-2 max-w-[95vw] animate-fade-in select-none"
+                style={{ left: toolbarPos.x, top: toolbarPos.y, cursor: isDraggingToolbar.current ? 'grabbing' : 'default' }}
+              >
+                {/* Drag Handle */}
+                <div
+                  onMouseDown={handleToolbarMouseDown}
+                  className="cursor-grab active:cursor-grabbing p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors"
+                  title="اسحب لتحريك الشريط"
+                >
+                  <GripHorizontal className="w-4 h-4" />
+                </div>
                 {/* Tool Selection */}
                 <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 gap-1">
                   <button
@@ -1525,6 +1846,47 @@ export default function LiveClassRoomPage() {
                   {allowStudentScreenShare ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-amber-400" />}
                   <span className="text-[11px] sm:text-xs hidden sm:inline">{allowStudentScreenShare ? 'مشاركة الطلاب مفعلة' : 'مشاركة الطلاب مقفلة'}</span>
                 </button>
+              )}
+
+              {/* Whiteboard Button (Supervisor Only) */}
+              {isSupervisorForThisClass && (
+                <button
+                  onClick={() => isWhiteboardActive ? closeWhiteboard() : openWhiteboard()}
+                  className={`p-2.5 sm:p-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all ${
+                    isWhiteboardActive
+                      ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20 ring-2 ring-purple-400/50'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
+                  title={isWhiteboardActive ? 'إغلاق السبورة البيضاء' : 'فتح السبورة البيضاء التفاعلية للشرح'}
+                >
+                  <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                  <span className="text-[11px] sm:text-xs">{isWhiteboardActive ? 'إغلاق السبورة' : 'سبورة بيضاء'}</span>
+                </button>
+              )}
+
+              {/* File Share Button (Supervisor Only) */}
+              {isSupervisorForThisClass && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.mp4,.mov"
+                    onChange={handleFileShare}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => sharedFile ? closeFileShare() : fileInputRef.current?.click()}
+                    className={`p-2.5 sm:p-3 rounded-2xl font-bold text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all ${
+                      sharedFile
+                        ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-500/20 ring-2 ring-teal-400/50'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                    title={sharedFile ? 'إغلاق الملف المشارك' : 'مشاركة ملف (PDF / صورة / عرض تقديمي)'}
+                  >
+                    <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-teal-400" />
+                    <span className="text-[11px] sm:text-xs">{sharedFile ? 'إغلاق الملف' : 'مشاركة ملف'}</span>
+                  </button>
+                </>
               )}
 
               {/* Student Raise Hand Button */}
