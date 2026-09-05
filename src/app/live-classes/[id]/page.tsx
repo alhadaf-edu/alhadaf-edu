@@ -12,6 +12,7 @@ import {
   RemoteTrack,
   RemoteParticipant,
   LocalParticipant,
+  LocalVideoTrack,
   Participant,
   DataPacket_Kind
 } from 'livekit-client';
@@ -785,75 +786,125 @@ export default function LiveClassRoomPage() {
     if (room) syncParticipantsList(room);
   };
 
-  // 5. Screen Share Toggle & Publish to LiveKit Cloud
+  // 5. Screen Share Toggle — يدعم Android Chrome مثل Messenger / Zoom
   const toggleScreenShare = async () => {
     const room = roomRef.current;
+
+    // ─── STOP sharing ───────────────────────────────────────────────────────
     if (isScreenSharing) {
-      if (room && room.localParticipant) {
+      if (room?.localParticipant) {
         await room.localParticipant.setScreenShareEnabled(false).catch(() => {});
       }
-      if (screenVideoRef.current) {
-        screenVideoRef.current.srcObject = null;
-      }
+      if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
       setScreenTrack(null);
       setIsScreenSharing(false);
       setScreenSharePresenter('');
       showToast('⏹️ تم إيقاف مشاركة الشاشة');
-    } else {
-      if (!isSupervisorForThisClass && !allowStudentScreenShare) {
-        showToast('🔒 مشاركة الشاشة مقفلة حالياً من قبل المشرف. يرجى الاستئذان أولاً.');
+      return;
+    }
+
+    // ─── Permission check ────────────────────────────────────────────────────
+    if (!isSupervisorForThisClass && !allowStudentScreenShare) {
+      showToast('🔒 مشاركة الشاشة مقفلة حالياً من قبل المشرف');
+      return;
+    }
+
+    if (!room?.localParticipant) {
+      showToast('⚠️ لم يتم الاتصال بالغرفة بعد — انتظر قليلاً');
+      return;
+    }
+
+    showToast('⏳ جاري طلب إذن مشاركة الشاشة...');
+
+    // ─── Strategy 1: LiveKit native setScreenShareEnabled ────────────────────
+    // Works on Desktop Chrome/Firefox/Edge & Android Chrome 92+
+    try {
+      const pub = await room.localParticipant.setScreenShareEnabled(true, {
+        audio: false, // audio capture is unreliable on Android — skip it
+        contentHint: 'detail',
+      });
+
+      const mediaTrack = pub?.videoTrack?.mediaStreamTrack;
+      if (mediaTrack) {
+        mediaTrack.onended = () => {
+          setScreenTrack(null);
+          setIsScreenSharing(false);
+          setScreenSharePresenter('');
+          room.localParticipant?.setScreenShareEnabled(false).catch(() => {});
+        };
+      }
+      if (pub?.videoTrack) {
+        setScreenTrack(pub.videoTrack);
+        setIsScreenSharing(true);
+        setScreenSharePresenter(profileNameRef.current);
+        showToast('🖥️ شاشتك تظهر الآن لجميع الحاضرين');
+      }
+      return; // success — exit
+    } catch (err1: any) {
+      // If user cancelled (AbortError) or denied permission — stop here
+      if (err1?.name === 'AbortError' || err1?.name === 'NotAllowedError' || err1?.name === 'PermissionDeniedError') {
+        if (err1?.name !== 'AbortError') {
+          showToast('❌ رُفض إذن مشاركة الشاشة — اضغط "السماح" في نافذة الإذن');
+        }
         return;
       }
-      try {
-        // Check if screen sharing is supported (not available on most Android browsers)
-        const isScreenShareSupported = typeof navigator !== 'undefined' &&
-          navigator.mediaDevices &&
-          typeof navigator.mediaDevices.getDisplayMedia === 'function';
+      // Otherwise try Strategy 2 (fallback)
+      console.warn('LiveKit setScreenShareEnabled failed, trying direct getDisplayMedia:', err1?.name);
+    }
 
-        if (!isScreenShareSupported) {
-          // Mobile fallback: share camera instead
-          if (room && room.localParticipant) {
-            const isAlreadySharing = room.localParticipant.isCameraEnabled;
-            if (!isAlreadySharing) {
-              await room.localParticipant.setCameraEnabled(true);
-              setIsCamOn(true);
-            }
-            showToast('📱 مشاركة الشاشة غير مدعومة على هذا الجهاز — تم تشغيل الكاميرا بدلاً منها');
-          }
-          return;
-        }
-
-        if (room && room.localParticipant) {
-          const pub = await room.localParticipant.setScreenShareEnabled(true, { audio: true });
-          const mediaTrack = pub?.videoTrack?.mediaStreamTrack;
-          if (mediaTrack) {
-            mediaTrack.onended = () => {
-              setScreenTrack(null);
-              setIsScreenSharing(false);
-              setScreenSharePresenter('');
-              if (room.localParticipant) {
-                room.localParticipant.setScreenShareEnabled(false).catch(() => {});
-              }
-            };
-          }
-          if (pub?.videoTrack) {
-            setScreenTrack(pub.videoTrack);
-            setIsScreenSharing(true);
-            setScreenSharePresenter(profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف' : 'طالب'));
-          }
-        }
-        showToast('🖥️ جاري مشاركة الشاشة لجميع الحاضرين');
-      } catch (err: any) {
-        if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
-          showToast('❌ رُفض إذن مشاركة الشاشة — يرجى السماح بالإذن وإعادة المحاولة');
-        } else if (err?.name === 'NotSupportedError' || err?.name === 'TypeError') {
-          // Android / unsupported browser
-          showToast('📱 مشاركة الشاشة غير مدعومة على هذا الجهاز — استخدم الكمبيوتر للمشاركة');
-        } else if (err?.name !== 'AbortError') {
-          showToast('⚠️ تعذرت مشاركة الشاشة — جرب مرة أخرى');
-        }
-        console.warn('Screen share error:', err);
+    // ─── Strategy 2: Direct getDisplayMedia + manual LiveKit track publish ──
+    // Fallback for browsers where LiveKit's internal call fails
+    try {
+      if (typeof navigator?.mediaDevices?.getDisplayMedia !== 'function') {
+        showToast('📱 متصفحك لا يدعم مشاركة الشاشة — جرّب Chrome أو Edge');
+        return;
       }
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          frameRate: { ideal: 15, max: 30 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+
+      const videoTrack = stream.getVideoTracks()[0];
+      if (!videoTrack) {
+        showToast('⚠️ لم يتم الحصول على بث الشاشة');
+        return;
+      }
+
+      // Create a LiveKit LocalVideoTrack and publish it with ScreenShare source
+      const localVidTrack = new LocalVideoTrack(videoTrack, undefined, false);
+      await room.localParticipant.publishTrack(localVidTrack, {
+        source: Track.Source.ScreenShare,
+        simulcast: false,
+      });
+
+      setScreenTrack(localVidTrack);
+      setIsScreenSharing(true);
+      setScreenSharePresenter(profileNameRef.current);
+      showToast('🖥️ شاشتك تظهر الآن لجميع الحاضرين');
+
+      // Listen for the browser "stop sharing" button
+      videoTrack.onended = async () => {
+        try { await room.localParticipant.unpublishTrack(localVidTrack); } catch {}
+        setScreenTrack(null);
+        setIsScreenSharing(false);
+        setScreenSharePresenter('');
+        showToast('⏹️ انتهت مشاركة الشاشة');
+      };
+    } catch (err2: any) {
+      if (err2?.name === 'AbortError') return; // user cancelled
+      if (err2?.name === 'NotAllowedError' || err2?.name === 'PermissionDeniedError') {
+        showToast('❌ رُفض إذن مشاركة الشاشة — اضغط "السماح" في نافذة الإذن');
+      } else if (err2?.name === 'NotSupportedError') {
+        showToast('📱 متصفحك لا يدعم مشاركة الشاشة بعد — جرّب Chrome 92 أو أحدث');
+      } else {
+        showToast('⚠️ تعذرت مشاركة الشاشة — تأكد من إذن التسجيل في إعدادات الجهاز');
+      }
+      console.warn('Direct getDisplayMedia error:', err2);
     }
   };
 
@@ -1279,7 +1330,7 @@ export default function LiveClassRoomPage() {
     router.push('/live-classes');
   };
 
-  // Fullscreen toggle
+  // Fullscreen toggle (whole page — كل الصفحة)
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -1290,6 +1341,31 @@ export default function LiveClassRoomPage() {
       setIsFullscreen(false);
     }
   };
+
+  // Stage-only fullscreen — يكبّر منطقة البث فقط بعرض الشاشة الكاملة
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [isStageFull, setIsStageFull] = useState(false);
+  const toggleStageFullscreen = () => {
+    const el = stageRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch(() => {
+        // iOS Safari fallback — use CSS expand trick
+        setIsStageFull(true);
+      });
+      setIsStageFull(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsStageFull(false);
+    }
+  };
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement) setIsStageFull(false);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
 
   // Copy room link
   const handleCopyLink = () => {
@@ -1428,7 +1504,13 @@ export default function LiveClassRoomPage() {
         {/* VIDEO & PRESENTATION STAGE */}
         <div className="flex-1 bg-slate-950 flex flex-col justify-between p-3 sm:p-5 relative overflow-hidden">
           {/* Main Visual Stage / Zoom-Style Multi-Participant Grid */}
-          <div className="flex-1 bg-slate-900/90 rounded-3xl border border-slate-800/80 relative overflow-hidden flex flex-col p-3 shadow-inner group">
+          {/* isStageFull = iOS Safari fallback when requestFullscreen not available */}
+          <div
+            ref={stageRef}
+            className={`flex-1 bg-slate-900/90 rounded-3xl border border-slate-800/80 relative overflow-hidden flex flex-col p-3 shadow-inner group ${
+              isStageFull ? 'fixed inset-0 z-[100] rounded-none border-0 p-0 bg-black' : ''
+            }`}
+          >
             {/* 0. WHITEBOARD MODE (takes priority) */}
             {isWhiteboardActive ? (
               <div className="relative w-full h-full flex items-center justify-center bg-white rounded-2xl overflow-hidden">
@@ -1841,6 +1923,36 @@ export default function LiveClassRoomPage() {
                 </span>
               )}
             </div>
+
+            {/* ⤢ STAGE FULLSCREEN BUTTON — يكبّر شاشة البث فقط لملء الشاشة (موبايل + كمبيوتر) */}
+            <button
+              onClick={toggleStageFullscreen}
+              className={`absolute bottom-4 left-4 z-30 flex items-center gap-1.5 px-3 py-2 rounded-xl shadow-2xl border text-xs font-bold transition-all backdrop-blur-md ${
+                isStageFull
+                  ? 'bg-slate-950/95 border-emerald-500/60 text-emerald-300 hover:bg-slate-900'
+                  : 'bg-slate-950/80 border-slate-700/70 text-slate-300 hover:bg-slate-900/90 hover:border-slate-600'
+              }`}
+              title={isStageFull ? 'الخروج من وضع ملء الشاشة' : 'تكبير منطقة البث لملء الشاشة بالكامل'}
+            >
+              {isStageFull ? (
+                <><Minimize2 className="w-4 h-4" /><span>تصغير</span></>
+              ) : (
+                <><Maximize2 className="w-4 h-4" /><span>تكبير الشاشة</span></>
+              )}
+            </button>
+
+            {/* Escape key to exit stage fullscreen */}
+            {isStageFull && (
+              <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                <button
+                  onClick={toggleStageFullscreen}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-950/95 border border-slate-700/80 text-slate-300 hover:bg-slate-900 text-xs font-bold shadow-2xl backdrop-blur-md transition-all"
+                >
+                  <X className="w-4 h-4" />
+                  خروج من ملء الشاشة
+                </button>
+              </div>
+            )}
           </div>
 
           {/* BOTTOM CONTROLS BAR */}
