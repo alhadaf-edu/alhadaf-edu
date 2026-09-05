@@ -161,12 +161,10 @@ export default function LiveClassesPage() {
     }
   }, [selectedCountryFilter, userCountry, user?.uid, profile?.role]);
 
-  // Real-time synchronization across all devices (Polls every 4 seconds)
+  // Real-time synchronization across all devices — polls every 2 seconds
   useEffect(() => {
     fetchClasses();
-    const interval = setInterval(() => {
-      fetchClasses();
-    }, 4000);
+    const interval = setInterval(fetchClasses, 2000);
     return () => clearInterval(interval);
   }, [fetchClasses]);
 

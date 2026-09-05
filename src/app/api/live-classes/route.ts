@@ -39,7 +39,7 @@ async function withTimeout<T>(promise: Promise<T>, ms = 2000, fallback: T): Prom
 }
 
 /**
- * GET: List live classes with strict country isolation
+ * GET: List live classes — returns all classes for the student's country in real-time
  */
 export async function GET(req: NextRequest) {
   try {
@@ -55,13 +55,13 @@ export async function GET(req: NextRequest) {
     let effectiveCountry: CountryCode | 'all' = 'all';
     if (normRole === 'SUPER_ADMIN') {
       effectiveCountry = requestedCountry || 'all';
-    } else if (normRole === 'COUNTRY_SUPERVISOR') {
-      effectiveCountry = userCountry;
     } else {
+      // Both COUNTRY_SUPERVISOR and STUDENT see their own country
       effectiveCountry = userCountry;
     }
 
-    let liveClasses: LiveClass[] = [...memoryClasses];
+    // Always try Firestore first (most up-to-date across all devices)
+    let liveClasses: LiveClass[] = [];
 
     if (db) {
       const firestoreFetch = async () => {
@@ -70,26 +70,30 @@ export async function GET(req: NextRequest) {
         const snap = await getDocs(classesRef);
         snap.forEach((docSnap) => {
           const item = docSnap.data() as LiveClass;
+          // Skip records marked as deleted in Firestore
+          if ((item as any).isDeleted || deletedClasses.has(item.id)) return;
           list.push(item);
-          // Sync to memory
+          // Sync back to memory for future requests
           const idx = memoryClasses.findIndex(m => m.id === item.id);
-          if (idx >= 0) {
-            memoryClasses[idx] = item;
-          } else {
-            memoryClasses.push(item);
-          }
+          if (idx >= 0) { memoryClasses[idx] = item; }
+          else { memoryClasses.push(item); }
         });
         return list;
       };
 
-      const firestoreList = await withTimeout(firestoreFetch(), 2000, []);
+      const firestoreList = await withTimeout(firestoreFetch(), 3000, []);
       if (firestoreList.length > 0) {
         liveClasses = firestoreList;
+      } else {
+        // Fallback to memory if Firestore timed out
+        liveClasses = [...memoryClasses];
       }
+    } else {
+      liveClasses = [...memoryClasses];
     }
 
-    // Apply country isolation filter and filter out deleted classes
-    liveClasses = liveClasses.filter(c => !deletedClasses.has(c.id));
+    // Filter out deleted classes
+    liveClasses = liveClasses.filter(c => !deletedClasses.has(c.id) && !(c as any).isDeleted);
 
     // If specific id requested
     if (id) {
@@ -102,6 +106,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Country filter
     if (effectiveCountry !== 'all') {
       liveClasses = liveClasses.filter(c => c.countryId === effectiveCountry);
     }
@@ -114,15 +119,18 @@ export async function GET(req: NextRequest) {
       count: liveClasses.length,
       country: effectiveCountry,
       classes: liveClasses,
-      deletedIds: Array.from(deletedClasses)
+      deletedIds: Array.from(deletedClasses),
+      // Timestamp so client can detect stale cache
+      syncedAt: new Date().toISOString()
     });
   } catch (err: any) {
     const valid = memoryClasses.filter(c => !deletedClasses.has(c.id));
-    return NextResponse.json({ 
-      success: true, 
-      count: valid.length, 
+    return NextResponse.json({
+      success: true,
+      count: valid.length,
       classes: valid,
-      deletedIds: Array.from(deletedClasses)
+      deletedIds: Array.from(deletedClasses),
+      syncedAt: new Date().toISOString()
     });
   }
 }

@@ -1121,29 +1121,52 @@ export default function LiveClassRoomPage() {
     showToast('🧹 تم مسح السبورة البيضاء');
   };
 
-  // ========== FILE SHARING HANDLERS (مشاركة ملف - PDF / صورة / عرض) ==========
-  const handleFileShare = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ========== FILE SHARING HANDLERS — Upload to Cloudinary then share URL ==========
+  // NOTE: LiveKit DataChannel max packet = ~15KB, so base64 files fail silently.
+  // Solution: upload file to Cloudinary, share the URL via DataChannel instead.
+  const handleFileShare = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Limit file size to 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('⚠️ حجم الملف كبير جداً — الحد الأقصى 10 ميجابايت');
+    e.target.value = '';
+
+    // Limit to 20MB
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('⚠️ حجم الملف كبير جداً — الحد الأقصى 20 ميجابايت');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = reader.result as string;
-      const fileInfo = { name: file.name, type: file.type, url };
+
+    showToast('⏳ جاري رفع الملف وتجهيزه للمشاركة...');
+
+    try {
+      // Try Cloudinary upload first
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await fetch('/api/cloudinary/upload', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+
+      let fileUrl: string;
+      if (uploadData?.url) {
+        fileUrl = uploadData.url;
+      } else {
+        // Fallback: use local object URL (only works for the sender's browser)
+        fileUrl = URL.createObjectURL(file);
+        showToast('⚠️ رفع الملف فشل — الملف ظاهر لك فقط. تحقق من إعدادات Cloudinary.');
+      }
+
+      const fileInfo = { name: file.name, type: file.type, url: fileUrl };
       setSharedFile(fileInfo);
+
+      // Share via DataChannel — only sending small URL string, not base64
       const room = roomRef.current;
       if (room?.localParticipant) {
         const payload = new TextEncoder().encode(JSON.stringify({ type: 'file_share', file: fileInfo }));
         room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
       }
-      showToast(`📄 تم مشاركة الملف: ${file.name}`);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+      showToast(`📄 تم مشاركة الملف لجميع الحاضرين: ${file.name}`);
+    } catch (err) {
+      console.warn('File share error:', err);
+      showToast('⚠️ فشلت مشاركة الملف — تأكد من الاتصال وحاول مرة أخرى');
+    }
   };
 
   const closeFileShare = () => {
@@ -1174,38 +1197,74 @@ export default function LiveClassRoomPage() {
     }
   };
 
-  // 8. RECORDING ENGINE (تسجيل الحصة وحفظ الفيديو مباشرة على جهاز المشرف)
+  // 8. RECORDING ENGINE — يعمل على الكمبيوتر، ويسجّل الكاميرا على الموبايل
   const startRecording = async () => {
     try {
+      // Check MediaRecorder support
+      if (typeof MediaRecorder === 'undefined') {
+        showToast('⚠️ التسجيل غير مدعوم في هذا المتصفح — جرّب Chrome على الكمبيوتر');
+        return;
+      }
+
       let recordingStream: MediaStream | null = null;
 
-      if (isScreenSharing && screenVideoRef.current && (screenVideoRef.current.srcObject as MediaStream)) {
-        recordingStream = screenVideoRef.current.srcObject as MediaStream;
-      } else if (localVideoRef.current && (localVideoRef.current.srcObject as MediaStream)) {
-        recordingStream = localVideoRef.current.srcObject as MediaStream;
+      // Try to get screen share stream first (desktop)
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (!isMobileDevice) {
+        // Desktop: try to capture screen
+        if (isScreenSharing && screenVideoRef.current && (screenVideoRef.current.srcObject as MediaStream)) {
+          recordingStream = screenVideoRef.current.srcObject as MediaStream;
+        } else if (localVideoRef.current && (localVideoRef.current.srcObject as MediaStream)) {
+          recordingStream = localVideoRef.current.srcObject as MediaStream;
+        } else {
+          // Ask user to choose screen to record
+          try {
+            recordingStream = await navigator.mediaDevices.getDisplayMedia({
+              video: { displaySurface: 'browser' } as any,
+              audio: true
+            });
+          } catch {
+            showToast('❌ رُفض إذن تسجيل الشاشة — اضغط "السماح" في نافذة الإذن');
+            return;
+          }
+        }
+      } else {
+        // Mobile: record camera only (getDisplayMedia not available on most mobiles)
+        if (localVideoRef.current && (localVideoRef.current.srcObject as MediaStream)) {
+          recordingStream = localVideoRef.current.srcObject as MediaStream;
+        } else {
+          // Request camera access
+          try {
+            recordingStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          } catch {
+            showToast('❌ تعذر الوصول للكاميرا — تحقق من إذن الكاميرا في إعدادات الجهاز');
+            return;
+          }
+        }
+        showToast('📱 على الموبايل: سيتم تسجيل الكاميرا فقط (مشاركة الشاشة غير متاحة)');
       }
 
       if (!recordingStream) {
-        recordingStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { displaySurface: 'browser' } as any,
-          audio: true
-        });
+        showToast('⚠️ لا يوجد مصدر فيديو للتسجيل — شغّل الكاميرا أو شارك الشاشة أولاً');
+        return;
       }
 
       recordedChunksRef.current = [];
       const mimeTypes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
-      const supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+      const supportedType = mimeTypes.find(type => {
+        try { return MediaRecorder.isTypeSupported(type); } catch { return false; }
+      }) || '';
 
       const recorder = new MediaRecorder(recordingStream, supportedType ? { mimeType: supportedType } : {});
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          recordedChunksRef.current.push(e.data);
-        }
+        if (e.data && e.data.size > 0) recordedChunksRef.current.push(e.data);
       };
 
       recorder.onstop = () => {
+        const ext = supportedType.includes('mp4') ? 'mp4' : 'webm';
         const blob = new Blob(recordedChunksRef.current, { type: supportedType || 'video/webm' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1213,14 +1272,10 @@ export default function LiveClassRoomPage() {
         a.href = url;
         const dateStr = new Date().toISOString().slice(0, 10);
         const safeTitle = (classData?.title || 'حصة_الهدف').replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
-        a.download = `حصة_${safeTitle}_${dateStr}.webm`;
+        a.download = `حصة_${safeTitle}_${dateStr}.${ext}`;
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-        }, 100);
-
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
         setIsRecording(false);
         setRecordingTime(0);
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
@@ -1230,14 +1285,11 @@ export default function LiveClassRoomPage() {
       recorder.start(1000);
       setIsRecording(true);
       setRecordingTime(0);
-
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-
+      recordingTimerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
       showToast('🔴 بدأ تسجيل الحصة المباشرة...');
-    } catch (err) {
-      alert('تعذر بدء التسجيل. يرجى منح إذن التقاط الشاشة والصوت.');
+    } catch (err: any) {
+      console.warn('Recording error:', err);
+      showToast('⚠️ تعذر بدء التسجيل — تأكد من دعم المتصفح وإذن الوصول');
     }
   };
 
