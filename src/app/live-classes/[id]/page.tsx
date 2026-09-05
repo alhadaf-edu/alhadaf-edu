@@ -805,10 +805,26 @@ export default function LiveClassRoomPage() {
         return;
       }
       try {
+        // Check if screen sharing is supported (not available on most Android browsers)
+        const isScreenShareSupported = typeof navigator !== 'undefined' &&
+          navigator.mediaDevices &&
+          typeof navigator.mediaDevices.getDisplayMedia === 'function';
+
+        if (!isScreenShareSupported) {
+          // Mobile fallback: share camera instead
+          if (room && room.localParticipant) {
+            const isAlreadySharing = room.localParticipant.isCameraEnabled;
+            if (!isAlreadySharing) {
+              await room.localParticipant.setCameraEnabled(true);
+              setIsCamOn(true);
+            }
+            showToast('📱 مشاركة الشاشة غير مدعومة على هذا الجهاز — تم تشغيل الكاميرا بدلاً منها');
+          }
+          return;
+        }
+
         if (room && room.localParticipant) {
           const pub = await room.localParticipant.setScreenShareEnabled(true, { audio: true });
-          // Track attachment is handled by LocalTrackPublished event + useEffect
-          // Just set up the browser's native "stop sharing" detection
           const mediaTrack = pub?.videoTrack?.mediaStreamTrack;
           if (mediaTrack) {
             mediaTrack.onended = () => {
@@ -820,16 +836,23 @@ export default function LiveClassRoomPage() {
               }
             };
           }
-          // Set presenter name (state will be set by LocalTrackPublished event)
           if (pub?.videoTrack) {
             setScreenTrack(pub.videoTrack);
             setIsScreenSharing(true);
             setScreenSharePresenter(profile?.displayName || user?.displayName || (isSupervisorForThisClass ? 'المشرف' : 'طالب'));
           }
         }
-        showToast('🖥️ جاري مشاركة الشاشة والعرض الآن لجميع الحاضرين');
-      } catch (err) {
-        console.warn('Screen share cancelled:', err);
+        showToast('🖥️ جاري مشاركة الشاشة لجميع الحاضرين');
+      } catch (err: any) {
+        if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+          showToast('❌ رُفض إذن مشاركة الشاشة — يرجى السماح بالإذن وإعادة المحاولة');
+        } else if (err?.name === 'NotSupportedError' || err?.name === 'TypeError') {
+          // Android / unsupported browser
+          showToast('📱 مشاركة الشاشة غير مدعومة على هذا الجهاز — استخدم الكمبيوتر للمشاركة');
+        } else if (err?.name !== 'AbortError') {
+          showToast('⚠️ تعذرت مشاركة الشاشة — جرب مرة أخرى');
+        }
+        console.warn('Screen share error:', err);
       }
     }
   };
@@ -921,24 +944,24 @@ export default function LiveClassRoomPage() {
     showToast('🧹 تم مسح كل الرسومات والتحديدات');
   };
 
-  // ========== DRAGGABLE TOOLBAR HANDLERS ==========
-  const handleToolbarMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  // ========== DRAGGABLE TOOLBAR HANDLERS (Pointer Events — works on desktop + mobile) ==========
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const handleToolbarPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
     isDraggingToolbar.current = true;
     dragOffset.current = { x: e.clientX - toolbarPos.x, y: e.clientY - toolbarPos.y };
   };
-  const handleToolbarMouseMove = useCallback((e: MouseEvent) => {
+  const handleToolbarPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingToolbar.current) return;
-    setToolbarPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
-  }, []);
-  const handleToolbarMouseUp = useCallback(() => { isDraggingToolbar.current = false; }, []);
-  useEffect(() => {
-    window.addEventListener('mousemove', handleToolbarMouseMove);
-    window.addEventListener('mouseup', handleToolbarMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleToolbarMouseMove);
-      window.removeEventListener('mouseup', handleToolbarMouseUp);
-    };
-  }, [handleToolbarMouseMove, handleToolbarMouseUp]);
+    e.preventDefault();
+    const maxX = window.innerWidth - 60;
+    const maxY = window.innerHeight - 60;
+    setToolbarPos({
+      x: Math.max(0, Math.min(e.clientX - dragOffset.current.x, maxX)),
+      y: Math.max(0, Math.min(e.clientY - dragOffset.current.y, maxY))
+    });
+  };
+  const handleToolbarPointerUp = () => { isDraggingToolbar.current = false; };
 
   // ========== INTERACTIVE WHITEBOARD HANDLERS (سبورة بيضاء تفاعلية) ==========
   const openWhiteboard = () => {
@@ -1477,7 +1500,7 @@ export default function LiveClassRoomPage() {
                 )}
               </div>
             ) : isScreenSharing ? (
-              <div className="relative w-full h-full flex items-center justify-center bg-black rounded-2xl overflow-hidden">
+              <div className="relative w-full h-full flex items-center justify-center bg-black rounded-2xl overflow-hidden group/stage">
                 <video
                   ref={screenVideoRef}
                   autoPlay
@@ -1485,24 +1508,54 @@ export default function LiveClassRoomPage() {
                   className="w-full h-full object-contain"
                 />
 
-                {/* Presenter Name Badge */}
-                <div className="absolute top-3 right-3 z-20 flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-blue-500/40 text-xs font-bold text-blue-300 shadow-xl">
-                  <MonitorUp className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-                  <span>مشاركة الشاشة: <strong className="text-white">{screenSharePresenter || 'أحد الحاضرين'}</strong></span>
+                {/* Top Bar: Presenter Badge + Stop Button */}
+                <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-blue-500/40 text-xs font-bold text-blue-300 shadow-xl">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse inline-block" />
+                    <MonitorUp className="w-3.5 h-3.5 text-blue-400" />
+                    <span>يشارك: <strong className="text-white">{screenSharePresenter || 'أحد الحاضرين'}</strong></span>
+                  </div>
+                  {/* Stop sharing button (only for the presenter) */}
+                  {isScreenSharing && (
+                    <button
+                      onClick={toggleScreenShare}
+                      className="px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg border border-red-500/50 backdrop-blur-md opacity-0 group-hover/stage:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      إيقاف
+                    </button>
+                  )}
                 </div>
 
-                {/* PiP Local Video */}
-                {isCamOn && (
-                  <div className="absolute bottom-4 right-4 w-44 h-28 bg-slate-950 rounded-2xl border-2 border-emerald-500/80 overflow-hidden shadow-2xl z-20">
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+                {/* Bottom-Right: PiP local camera (clickable to expand to fullscreen) */}
+                <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
+                  {isCamOn && (
+                    <div
+                      className="w-44 h-28 bg-slate-950 rounded-2xl border-2 border-emerald-500/80 overflow-hidden shadow-2xl cursor-pointer hover:scale-105 transition-transform group/pip"
+                      title="انقر لتكبير الكاميرا"
+                      onClick={toggleFullscreen}
+                    >
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover/pip:bg-black/30 flex items-center justify-center opacity-0 group-hover/pip:opacity-100 transition-all rounded-2xl">
+                        <Maximize2 className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                  )}
+                  {/* Expand to fullscreen button */}
+                  <button
+                    onClick={toggleFullscreen}
+                    className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-slate-700/80 shadow-lg backdrop-blur-md opacity-0 group-hover/stage:opacity-100 transition-opacity"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    ملء الشاشة
+                  </button>
+                </div>
               </div>
             ) : viewMode === 'gallery' ? (
               /* 2. ZOOM / MEET MULTI-PARTICIPANT DYNAMIC GALLERY GRID */
@@ -1601,6 +1654,40 @@ export default function LiveClassRoomPage() {
               </div>
             )}
 
+            {/* ======== FLOATING PiP MINI PREVIEW ========
+                Shown when screen sharing is active but viewer is in gallery/speaker mode.
+                Bottom-right corner — click to expand to fullscreen (Zoom style) */}
+            {isScreenSharing && !isWhiteboardActive && !sharedFile && viewMode !== 'gallery' && (
+              <div
+                className="absolute bottom-4 right-4 z-30 group/pip cursor-pointer"
+                onClick={toggleFullscreen}
+                title="انقر لتكبير شاشة المشاركة"
+              >
+                <div className="w-52 h-32 bg-black rounded-2xl border-2 border-blue-500/70 overflow-hidden shadow-2xl hover:border-blue-400 hover:scale-105 transition-all duration-200 relative">
+                  <video
+                    ref={screenVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                  {/* Hover overlay with expand icon */}
+                  <div className="absolute inset-0 bg-black/0 group-hover/pip:bg-black/40 flex flex-col items-center justify-center gap-1 opacity-0 group-hover/pip:opacity-100 transition-all">
+                    <Maximize2 className="w-7 h-7 text-white drop-shadow-lg" />
+                    <span className="text-white text-[11px] font-bold">تكبير الشاشة</span>
+                  </div>
+                  {/* Live indicator */}
+                  <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                    مباشر
+                  </div>
+                  {/* Presenter name */}
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <p className="text-white text-[10px] font-semibold truncate">{screenSharePresenter || 'مشاركة الشاشة'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* INTERACTIVE WHITEBOARD / ANNOTATION CANVAS OVERLAY */}
             <canvas
               ref={annotationCanvasRef}
@@ -1619,16 +1706,20 @@ export default function LiveClassRoomPage() {
             {/* FLOATING ANNOTATION TOOLBAR — DRAGGABLE (قلم عائم قابل للسحب في كل مكان) */}
             {isAnnotationOpen && (
               <div
-                className="fixed z-50 bg-slate-900/97 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-2 max-w-[95vw] animate-fade-in select-none"
-                style={{ left: toolbarPos.x, top: toolbarPos.y, cursor: isDraggingToolbar.current ? 'grabbing' : 'default' }}
+                ref={toolbarRef}
+                className="fixed z-50 bg-slate-900/97 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-2 max-w-[95vw] select-none"
+                style={{ left: toolbarPos.x, top: toolbarPos.y }}
               >
-                {/* Drag Handle */}
+                {/* ↕ Drag Handle — hold and drag to move the toolbar anywhere */}
                 <div
-                  onMouseDown={handleToolbarMouseDown}
-                  className="cursor-grab active:cursor-grabbing p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors"
-                  title="اسحب لتحريك الشريط"
+                  onPointerDown={handleToolbarPointerDown}
+                  onPointerMove={handleToolbarPointerMove}
+                  onPointerUp={handleToolbarPointerUp}
+                  onPointerCancel={handleToolbarPointerUp}
+                  className="cursor-grab active:cursor-grabbing p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors touch-none"
+                  title="اسحب من هنا لتحريك الشريط في أي مكان"
                 >
-                  <GripHorizontal className="w-4 h-4" />
+                  <GripHorizontal className="w-5 h-5" />
                 </div>
                 {/* Tool Selection */}
                 <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 gap-1">
