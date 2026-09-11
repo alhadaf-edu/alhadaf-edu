@@ -126,7 +126,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'alhadaf-edu-google-site-verification',
+    google: 'google31fb6c9dbc97f2fe',
   },
   category: 'education',
 };
