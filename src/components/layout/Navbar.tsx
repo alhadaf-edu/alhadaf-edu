@@ -47,10 +47,13 @@ export default function Navbar() {
   const [aboutDropdown, setAboutDropdown] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
   const [countryDropdown, setCountryDropdown] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
 
   const countryRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 15);
@@ -64,6 +67,7 @@ export default function Navbar() {
     setAboutDropdown(false);
     setUserDropdown(false);
     setCountryDropdown(false);
+    setSearchOpen(false);
   }, [pathname]);
 
   // Close dropdowns on outside click
@@ -71,6 +75,9 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       if (countryRef.current && !countryRef.current.contains(e.target as Node)) {
         setCountryDropdown(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -159,14 +166,14 @@ export default function Navbar() {
                 >
                   <button
                     onClick={() => setCurriculumDropdown(!curriculumDropdown)}
-                    className={`flex items-center gap-1 px-2 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${
+                    className={`flex items-center gap-1 px-1.5 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${
                       isActive
                         ? 'text-primary-600 dark:text-gold-400 bg-primary-50 dark:bg-slate-900'
                         : 'text-slate-700 dark:text-slate-200 hover:text-primary-600 dark:hover:text-gold-400 hover:bg-slate-50 dark:hover:bg-slate-900'
                     }`}
                   >
                     <span>{link.name}</span>
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${curriculumDropdown ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-3 w-3 xl:h-3.5 xl:w-3.5 transition-transform duration-200 ${curriculumDropdown ? 'rotate-180' : ''}`} />
                   </button>
 
                   {curriculumDropdown && (
@@ -216,7 +223,7 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`px-2 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                className={`px-1.5 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
                   isActive
                     ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#242045]'
                     : 'text-[#2A254D] dark:text-slate-200 hover:text-[#4F5DE4] dark:hover:text-[#aab5f5] hover:bg-[#F1F2FD]/60 dark:hover:bg-[#242045]/60'
@@ -234,14 +241,14 @@ export default function Navbar() {
             onMouseLeave={() => setAboutDropdown(false)}
           >
             <button
-              className={`flex items-center gap-1 px-2 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 px-1.5 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
                 ['/about', '/contact'].includes(pathname)
                   ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#242045]'
                   : 'text-[#2A254D] dark:text-slate-200 hover:text-[#4F5DE4] dark:hover:text-[#aab5f5] hover:bg-[#F1F2FD]/60 dark:hover:bg-[#242045]/60'
               }`}
             >
               <span>عن المنصة</span>
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${aboutDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-3 w-3 xl:h-3.5 xl:w-3.5 transition-transform duration-200 ${aboutDropdown ? 'rotate-180' : ''}`} />
             </button>
             {aboutDropdown && (
               <div className="absolute top-full right-0 w-48 rounded-2xl border border-[#E0E3FD] dark:border-[#373261] bg-white dark:bg-[#242045] p-2 shadow-xl animate-fade-in z-50">
@@ -324,17 +331,68 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Quick Search */}
-          <form onSubmit={handleSearch} className="relative flex items-center">
-            <input
-              type="text"
-              placeholder="ابحث عن درس..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-24 sm:w-28 xl:w-36 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 pr-7 pl-2.5 text-[11px] xl:text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:w-36 sm:focus:w-44 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all duration-300"
-            />
-            <Search className="absolute right-2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          </form>
+          {/* Responsive Quick Search (Compact icon on laptop / expands on click) */}
+          <div className="relative flex items-center" ref={searchRef}>
+            {/* Expanded search popup for smaller desktop screens (< 1280px) */}
+            {searchOpen && (
+              <form 
+                onSubmit={(e) => {
+                  handleSearch(e);
+                  setSearchOpen(false);
+                }} 
+                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl z-50 flex items-center gap-2 animate-fade-in xl:hidden"
+              >
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="ابحث عن درس أو مذكرة..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-primary-600 hover:bg-primary-700 text-white p-2 shrink-0 transition-colors"
+                  title="بحث"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  className="rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 p-2 shrink-0 hover:bg-slate-200"
+                  title="إغلاق"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </form>
+            )}
+
+            {/* Laptop button: icon only on lg (< 1280px) */}
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen(!searchOpen);
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              }}
+              title="بحث في المنصة"
+              className="flex xl:hidden h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            >
+              <Search className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Full search input only on wide screens (>= 1280px) */}
+            <form onSubmit={handleSearch} className="hidden xl:flex relative items-center">
+              <input
+                type="text"
+                placeholder="ابحث عن درس..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-28 2xl:w-36 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 pr-7 pl-2.5 text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:w-40 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all duration-300"
+              />
+              <Search className="absolute right-2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            </form>
+          </div>
 
           {/* Dark Mode Toggle */}
           <button

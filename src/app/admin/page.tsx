@@ -76,6 +76,7 @@ export default function AdminDashboardPage() {
   // YouTube Sync state
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+  const [syncResultModal, setSyncResultModal] = useState<{ isOpen: boolean; success: boolean; message: string } | null>(null);
 
   // AdSense config state
   const [adClientId, setAdClientId] = useState(adSettings.adClient || '');
@@ -453,16 +454,30 @@ export default function AdminDashboardPage() {
     try {
       const res = await syncWithYouTube();
       setSyncMessage(res.message);
-      if (res.success) {
-        // نافذة منبثقة بمجرد الانتهاء يضغط المشرف OK
-        window.alert(`🎉 ${res.message}\n\nتم حفظ وتثبيت كافة الدروس رسمياً في قاعدة بيانات الموقع لجميع الزوار والطلاب.`);
-      } else {
-        window.alert(`⚠️ تنبيه: ${res.message}`);
-      }
+      setSyncResultModal({
+        isOpen: true,
+        success: res.success,
+        message: res.success 
+          ? `${res.message}\n\nتم حفظ وتثبيت كافة الدروس رسمياً في قاعدة بيانات الموقع لجميع الزوار والطلاب بنجاح.`
+          : res.message
+      });
+      // Also trigger browser alert for accessibility
+      try {
+        if (res.success) {
+          window.alert(`🎉 ${res.message}\n\nتم حفظ وتثبيت كافة الدروس رسمياً في قاعدة بيانات الموقع.`);
+        } else {
+          window.alert(`⚠️ تنبيه: ${res.message}`);
+        }
+      } catch {}
     } catch (err: any) {
       const errMsg = 'حدث خطأ أثناء الاتصال بقناة اليوتيوب، يرجى إعادة المحاولة لاحقاً.';
       setSyncMessage(errMsg);
-      window.alert(errMsg);
+      setSyncResultModal({
+        isOpen: true,
+        success: false,
+        message: errMsg
+      });
+      try { window.alert(errMsg); } catch {}
     } finally {
       setSyncing(false);
     }
@@ -1691,6 +1706,43 @@ export default function AdminDashboardPage() {
                 </div>
               </form>
 
+            </div>
+          </div>
+        )}
+
+        {/* Sync Confirmation Modal with OK button */}
+        {syncResultModal?.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-center">
+              <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${
+                syncResultModal.success ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600' : 'bg-rose-100 dark:bg-rose-950/50 text-rose-600'
+              }`}>
+                {syncResultModal.success ? (
+                  <CheckCircle2 className="h-10 w-10" />
+                ) : (
+                  <AlertTriangle className="h-10 w-10" />
+                )}
+              </div>
+
+              <h3 className="text-lg font-black text-slate-900 dark:text-white font-heading">
+                {syncResultModal.success ? 'تمت المزامنة وحفظ الدروس بنجاح!' : 'تنبيه حول المزامنة'}
+              </h3>
+
+              <div className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 max-h-48 overflow-y-auto">
+                {syncResultModal.message}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSyncResultModal(null)}
+                className={`w-full py-3 px-6 rounded-2xl font-black text-xs text-white shadow-lg transition-transform active:scale-95 ${
+                  syncResultModal.success 
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20' 
+                    : 'bg-slate-800 hover:bg-slate-700'
+                }`}
+              >
+                موافق (OK)
+              </button>
             </div>
           </div>
         )}

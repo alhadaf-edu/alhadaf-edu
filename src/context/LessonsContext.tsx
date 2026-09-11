@@ -5,7 +5,7 @@ import { Lesson, Quiz, YouTubeVideo, CountryCode } from '@/types';
 import { INITIAL_LESSONS, STANDALONE_QUIZZES } from '@/lib/curriculumData';
 import { fetchChannelVideos, parseVideoTitleToCurriculum } from '@/lib/youtube';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 interface LessonsContextType {
   lessons: Lesson[];

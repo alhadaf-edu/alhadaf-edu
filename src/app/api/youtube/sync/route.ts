@@ -20,11 +20,15 @@ export async function GET() {
   let videos: YouTubeVideo[] = [];
   let playlists: PlaylistInfo[] = [];
 
-  // 1. Try fetching via YouTube Data API v3 (Uploads playlist & Playlists) using the valid authorized referer
+  // 1. Try fetching via YouTube Data API v3 with strict 3.5s timeout
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
     const chUrl = `https://www.googleapis.com/youtube/v3/channels?key=${apiKey}&id=${channelId}&part=contentDetails`;
     const chRes = await fetch(chUrl, { 
       headers: { 'Referer': referer },
+      signal: controller.signal,
       next: { revalidate: 0 }
     });
 
@@ -40,6 +44,7 @@ export async function GET() {
           const itemsUrl = `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet,contentDetails&maxResults=50${pageToken ? `&pageToken=${pageToken}` : ''}`;
           const itemsRes = await fetch(itemsUrl, { 
             headers: { 'Referer': referer },
+            signal: controller.signal,
             next: { revalidate: 0 }
           });
 
@@ -76,6 +81,7 @@ export async function GET() {
     const plUrl = `https://www.googleapis.com/youtube/v3/playlists?key=${apiKey}&channelId=${channelId}&part=snippet,contentDetails&maxResults=50`;
     const plRes = await fetch(plUrl, {
       headers: { 'Referer': referer },
+      signal: controller.signal,
       next: { revalidate: 0 }
     });
 
@@ -91,6 +97,8 @@ export async function GET() {
         }));
       }
     }
+
+    clearTimeout(timeoutId);
   } catch (apiError: any) {
     console.warn('YouTube API v3 fetch error in sync route:', apiError.message || apiError);
   }
