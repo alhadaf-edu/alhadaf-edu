@@ -262,28 +262,50 @@ export async function PUT(req: NextRequest) {
 }
 
 /**
- * DELETE: Delete a live class
+ * DELETE: Delete a live class (or ALL classes if ?all=true)
  */
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    const deleteAll = searchParams.get('all') === 'true';
 
+    // ── DELETE ALL ─────────────────────────────────────────────────────────────
+    if (deleteAll) {
+      const allIds = memoryClasses.map(c => c.id);
+      allIds.forEach(cid => deletedClasses.add(cid));
+      memoryClasses.splice(0, memoryClasses.length); // clear array in place
+
+      if (db) {
+        const classesRef = collection(db, 'live_classes');
+        const snap = await withTimeout(getDocs(classesRef), 3000, null);
+        if (snap) {
+          const batch: Promise<void>[] = [];
+          snap.forEach((docSnap) => {
+            batch.push(deleteDoc(doc(db, 'live_classes', docSnap.id)));
+          });
+          await Promise.allSettled(batch);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        deletedCount: allIds.length,
+        message: 'تم حذف جميع الحصص من جميع الأجهزة والطلاب.'
+      });
+    }
+
+    // ── DELETE SINGLE ──────────────────────────────────────────────────────────
     if (!id) {
       return NextResponse.json({ error: 'معرف الحصة مطلوب للحذف.' }, { status: 400 });
     }
 
-    // Track in global deleted set so no other serverless instance or cache re-introduces it
     deletedClasses.add(id);
-
     const idx = memoryClasses.findIndex(m => m.id === id);
-    if (idx >= 0) {
-      memoryClasses.splice(idx, 1);
-    }
+    if (idx >= 0) memoryClasses.splice(idx, 1);
 
     if (db) {
       deleteDoc(doc(db, 'live_classes', id)).catch(() => {});
-      // Also mark as deleted if deleteDoc is delayed
       setDoc(doc(db, 'live_classes', id), { isDeleted: true, status: 'deleted' }, { merge: true }).catch(() => {});
     }
 

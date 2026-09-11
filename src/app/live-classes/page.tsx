@@ -228,6 +228,27 @@ export default function LiveClassesPage() {
     }
   };
 
+  // Handle Delete All Classes
+  const handleDeleteAllClasses = async () => {
+    if (!confirm('⚠️ تحذير: هل أنت متأكد من حذف *جميع الحصص* نهائياً؟ هذا الإجراء لا يمكن التراجع عنه وسيحذف الحصص من جميع الطلاب.')) return;
+
+    // 1. Instant local wipe
+    setClasses([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LIVE_CLASSES_STORAGE_KEY);
+    }
+    showToast('🧹 تم مسح جميع الحصص بنجاح');
+
+    // 2. Background API call to global delete endpoint
+    try {
+      await fetch('/api/live-classes?all=true', {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.warn('Delete all sync note:', e);
+    }
+  };
+
   // Handle Create Class Submission
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -402,16 +423,26 @@ export default function LiveClassesPage() {
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-3">
               {isSupervisorOrAdmin && (
-                <button
-                  onClick={() => {
-                    setFormCountry(isSuperAdmin ? (selectedCountryFilter === 'all' ? 'sa' : selectedCountryFilter) : (userCountry || 'sa'));
-                    setIsModalOpen(true);
-                  }}
-                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>جدولة حصة جديدة</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleDeleteAllClasses}
+                    className="flex items-center gap-2 bg-red-900/50 hover:bg-red-600 text-red-200 hover:text-white font-bold px-4 py-3.5 rounded-2xl shadow-lg border border-red-700/50 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    title="حذف جميع الحصص (إعادة ضبط)"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                    <span className="hidden sm:inline">مسح الكل</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFormCountry(isSuperAdmin ? (selectedCountryFilter === 'all' ? 'sa' : selectedCountryFilter) : (userCountry || 'sa'));
+                      setIsModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span>جدولة حصة جديدة</span>
+                  </button>
+                </>
               )}
             </div>
           </div>

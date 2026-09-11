@@ -13,6 +13,7 @@ import {
   RemoteParticipant,
   LocalParticipant,
   LocalVideoTrack,
+  LocalAudioTrack,
   Participant,
   DataPacket_Kind
 } from 'livekit-client';
@@ -234,6 +235,7 @@ export default function LiveClassRoomPage() {
   const roomRef = useRef<Room | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const screenVideoRef = useRef<HTMLVideoElement>(null);
+  const screenAudioTrackRef = useRef<LocalAudioTrack | null>(null);
   const remoteVideosContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   // Stable refs to prevent LiveKit connection re-triggering on every state change
@@ -681,10 +683,51 @@ export default function LiveClassRoomPage() {
                 showToast('🧹 مسح المشرف السبورة');
               } else if (data.type === 'file_share') {
                 setSharedFile(data.file);
+                // Clear any previous annotations when new file is shared
+                const canvas = annotationCanvasRef.current;
+                if (canvas) {
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
                 showToast(`📄 المشرف شارك ملف: ${data.file.name}`);
               } else if (data.type === 'file_close') {
                 setSharedFile(null);
+                // Clear annotations when file is closed
+                const canvas = annotationCanvasRef.current;
+                if (canvas) {
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
                 showToast('📄 أغلق المشرف الملف المشارك');
+              } else if (data.type === 'file_annotation_stroke') {
+                // Render received annotation stroke on local annotation canvas
+                const canvas = annotationCanvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                const s = data.stroke;
+                // Scale coordinates to match local canvas size
+                const scaleX = canvas.width / (s.canvasW || canvas.width);
+                const scaleY = canvas.height / (s.canvasH || canvas.height);
+                ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                if (s.tool === 'eraser') {
+                  ctx.globalCompositeOperation = 'destination-out';
+                  ctx.lineWidth = s.size * 7;
+                  ctx.strokeStyle = 'rgba(0,0,0,1)';
+                } else if (s.tool === 'highlighter') {
+                  ctx.globalCompositeOperation = 'source-over';
+                  ctx.lineWidth = s.size * 4.5;
+                  ctx.strokeStyle = (s.color || '#ffff00') + '55';
+                } else {
+                  ctx.globalCompositeOperation = 'source-over';
+                  ctx.lineWidth = s.size;
+                  ctx.strokeStyle = s.color || '#ef4444';
+                }
+                ctx.beginPath();
+                ctx.moveTo(s.points[0][0] * scaleX, s.points[0][1] * scaleY);
+                ctx.lineTo(s.points[1][0] * scaleX, s.points[1][1] * scaleY);
+                ctx.stroke();
+                ctx.globalCompositeOperation = 'source-over';
               }
             } catch {}
           });
@@ -786,7 +829,7 @@ export default function LiveClassRoomPage() {
     if (room) syncParticipantsList(room);
   };
 
-  // 5. Screen Share Toggle — يدعم Android Chrome مثل Messenger / Zoom
+  // 5. Screen Share Toggle — بث الشاشة + الصوت الداخلي للنظام والصوت الخارجي (المايك)
   const toggleScreenShare = async () => {
     const room = roomRef.current;
 
@@ -794,6 +837,13 @@ export default function LiveClassRoomPage() {
     if (isScreenSharing) {
       if (room?.localParticipant) {
         await room.localParticipant.setScreenShareEnabled(false).catch(() => {});
+        if (screenAudioTrackRef.current) {
+          try {
+            await room.localParticipant.unpublishTrack(screenAudioTrackRef.current);
+            screenAudioTrackRef.current.stop();
+          } catch {}
+          screenAudioTrackRef.current = null;
+        }
       }
       if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
       setScreenTrack(null);
@@ -814,15 +864,29 @@ export default function LiveClassRoomPage() {
       return;
     }
 
-    showToast('⏳ جاري طلب إذن مشاركة الشاشة...');
+    showToast('⏳ جاري طلب إذن مشاركة الشاشة وبث الصوت...');
 
-    // ─── Strategy 1: LiveKit native setScreenShareEnabled ────────────────────
-    // Works on Desktop Chrome/Firefox/Edge & Android Chrome 92+
+    // Helper: Make sure microphone remains unmuted / active during screen share so external audio works
+    const ensureMicActive = async () => {
+      try {
+        if (!isMicOn && room?.localParticipant) {
+          await room.localParticipant.setMicrophoneEnabled(true);
+          setIsMicOn(true);
+        }
+      } catch (micErr) {
+        console.warn('Could not auto-enable mic for screen share:', micErr);
+      }
+    };
+
+    // ─── Strategy 1: LiveKit native setScreenShareEnabled with system audio ──
     try {
       const pub = await room.localParticipant.setScreenShareEnabled(true, {
-        audio: false, // audio capture is unreliable on Android — skip it
+        audio: true, // بث صوت النظام الداخلي (System/Tab audio)
         contentHint: 'detail',
       });
+
+      // Ensure microphone is active for simultaneous voice/external narration
+      await ensureMicActive();
 
       const mediaTrack = pub?.videoTrack?.mediaStreamTrack;
       if (mediaTrack) {
@@ -830,6 +894,13 @@ export default function LiveClassRoomPage() {
           setScreenTrack(null);
           setIsScreenSharing(false);
           setScreenSharePresenter('');
+          if (screenAudioTrackRef.current && room.localParticipant) {
+            try {
+              room.localParticipant.unpublishTrack(screenAudioTrackRef.current);
+              screenAudioTrackRef.current.stop();
+            } catch {}
+            screenAudioTrackRef.current = null;
+          }
           room.localParticipant?.setScreenShareEnabled(false).catch(() => {});
         };
       }
@@ -837,37 +908,55 @@ export default function LiveClassRoomPage() {
         setScreenTrack(pub.videoTrack);
         setIsScreenSharing(true);
         setScreenSharePresenter(profileNameRef.current);
-        showToast('🖥️ شاشتك تظهر الآن لجميع الحاضرين');
+        showToast('🖥️ تم بدء مشاركة الشاشة وصوت الجهاز والمايك لجميع الحاضرين 🔊');
       }
       return; // success — exit
     } catch (err1: any) {
-      // If user cancelled (AbortError) or denied permission — stop here
+      // If user explicitly cancelled or denied permission — stop here
       if (err1?.name === 'AbortError' || err1?.name === 'NotAllowedError' || err1?.name === 'PermissionDeniedError') {
         if (err1?.name !== 'AbortError') {
-          showToast('❌ رُفض إذن مشاركة الشاشة — اضغط "السماح" في نافذة الإذن');
+          showToast('❌ رُفض إذن مشاركة الشاشة — اضغط "السماح" مع تفعيل خيار مشاركة الصوت');
         }
         return;
       }
-      // Otherwise try Strategy 2 (fallback)
-      console.warn('LiveKit setScreenShareEnabled failed, trying direct getDisplayMedia:', err1?.name);
+      console.warn('LiveKit setScreenShareEnabled audio+video attempt failed, trying fallback:', err1?.name);
     }
 
-    // ─── Strategy 2: Direct getDisplayMedia + manual LiveKit track publish ──
-    // Fallback for browsers where LiveKit's internal call fails
+    // ─── Strategy 2: Direct getDisplayMedia with audio capture + manual publish ──
     try {
       if (typeof navigator?.mediaDevices?.getDisplayMedia !== 'function') {
-        showToast('📱 متصفحك لا يدعم مشاركة الشاشة — جرّب Chrome أو Edge');
+        showToast('📱 متصفحك لا يدعم مشاركة الشاشة — يرجى استخدام متصفح Google Chrome');
         return;
       }
 
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          frameRate: { ideal: 15, max: 30 },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
+      let stream: MediaStream;
+      let hasCapturedAudio = false;
+
+      try {
+        // Try requesting both video and audio (tab/system audio)
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            frameRate: { ideal: 15, max: 30 },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: true,
+        });
+        hasCapturedAudio = stream.getAudioTracks().length > 0;
+      } catch (audioReqErr: any) {
+        // In some mobile/browser versions requesting audio: true might fail, retry without audio constraint
+        if (audioReqErr?.name === 'AbortError' || audioReqErr?.name === 'NotAllowedError') {
+          throw audioReqErr;
+        }
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            frameRate: { ideal: 15, max: 30 },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      }
 
       const videoTrack = stream.getVideoTracks()[0];
       if (!videoTrack) {
@@ -875,21 +964,49 @@ export default function LiveClassRoomPage() {
         return;
       }
 
-      // Create a LiveKit LocalVideoTrack and publish it with ScreenShare source
+      // Publish screen video track
       const localVidTrack = new LocalVideoTrack(videoTrack, undefined, false);
       await room.localParticipant.publishTrack(localVidTrack, {
         source: Track.Source.ScreenShare,
         simulcast: false,
       });
 
+      // If internal/tab audio was captured, publish it as ScreenShareAudio
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        try {
+          const localAudTrack = new LocalAudioTrack(audioTrack, undefined, false);
+          await room.localParticipant.publishTrack(localAudTrack, {
+            source: Track.Source.ScreenShareAudio,
+          });
+          screenAudioTrackRef.current = localAudTrack;
+        } catch (audPubErr) {
+          console.warn('Could not publish screen audio track:', audPubErr);
+        }
+      }
+
+      // Ensure microphone is active for external voice narration
+      await ensureMicActive();
+
       setScreenTrack(localVidTrack);
       setIsScreenSharing(true);
       setScreenSharePresenter(profileNameRef.current);
-      showToast('🖥️ شاشتك تظهر الآن لجميع الحاضرين');
+      showToast(
+        hasCapturedAudio
+          ? '🖥️ تم بدء مشاركة الشاشة مع بث الصوت الداخلي وصوت المايك 🔊'
+          : '🖥️ تم بدء مشاركة الشاشة وصوت المايك مفعّل 🎙️'
+      );
 
-      // Listen for the browser "stop sharing" button
+      // Listen for the browser "stop sharing" native button
       videoTrack.onended = async () => {
         try { await room.localParticipant.unpublishTrack(localVidTrack); } catch {}
+        if (screenAudioTrackRef.current && room.localParticipant) {
+          try {
+            await room.localParticipant.unpublishTrack(screenAudioTrackRef.current);
+            screenAudioTrackRef.current.stop();
+          } catch {}
+          screenAudioTrackRef.current = null;
+        }
         setScreenTrack(null);
         setIsScreenSharing(false);
         setScreenSharePresenter('');
@@ -898,7 +1015,7 @@ export default function LiveClassRoomPage() {
     } catch (err2: any) {
       if (err2?.name === 'AbortError') return; // user cancelled
       if (err2?.name === 'NotAllowedError' || err2?.name === 'PermissionDeniedError') {
-        showToast('❌ رُفض إذن مشاركة الشاشة — اضغط "السماح" في نافذة الإذن');
+        showToast('❌ رُفض إذن مشاركة الشاشة — اضغط "السماح" مع تحديد "مشاركة صوت النظام" إذا رغبت');
       } else if (err2?.name === 'NotSupportedError') {
         showToast('📱 متصفحك لا يدعم مشاركة الشاشة بعد — جرّب Chrome 92 أو أحدث');
       } else {
@@ -924,6 +1041,9 @@ export default function LiveClassRoomPage() {
     showToast(newPerm ? '🔓 تم السماح للطلاب بمشاركة الشاشة' : '🔒 تم قفل مشاركة الشاشة للطلاب');
   };
 
+  // Ref to track last annotation point for broadcasting segments
+  const lastAnnotationPoint = useRef<{x: number; y: number} | null>(null);
+
   // 6. Floating Annotation & Whiteboard Canvas Handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = annotationCanvasRef.current;
@@ -939,6 +1059,7 @@ export default function LiveClassRoomPage() {
 
     ctx.beginPath();
     ctx.moveTo(x, y);
+    lastAnnotationPoint.current = { x, y };
     setIsDrawing(true);
   };
 
@@ -974,6 +1095,26 @@ export default function LiveClassRoomPage() {
 
     ctx.lineTo(x, y);
     ctx.stroke();
+
+    // ── Broadcast annotation strokes to all participants when file is shared ──
+    // (when screen sharing, the broadcast happens via the video stream itself)
+    const room = roomRef.current;
+    if (sharedFile && room?.localParticipant && lastAnnotationPoint.current && isSupervisorForThisClass) {
+      const payload = new TextEncoder().encode(JSON.stringify({
+        type: 'file_annotation_stroke',
+        stroke: {
+          tool: annotationTool,
+          color: annotationColor,
+          size: annotationSize,
+          points: [[lastAnnotationPoint.current.x, lastAnnotationPoint.current.y], [x, y]],
+          canvasW: canvas.width,
+          canvasH: canvas.height,
+        }
+      }));
+      room.localParticipant.publishData(payload, { reliable: false }).catch(() => {});
+    }
+
+    lastAnnotationPoint.current = { x, y };
   };
 
   const stopDrawing = () => {
@@ -1822,7 +1963,7 @@ export default function LiveClassRoomPage() {
               </div>
             )}
 
-            {/* INTERACTIVE WHITEBOARD / ANNOTATION CANVAS OVERLAY */}
+            {/* ANNOTATION CANVAS OVERLAY — active when pen tool open OR when file is shared (receives remote strokes) */}
             <canvas
               ref={annotationCanvasRef}
               onMouseDown={startDrawing}
@@ -1833,7 +1974,12 @@ export default function LiveClassRoomPage() {
               onTouchMove={drawOnCanvas}
               onTouchEnd={stopDrawing}
               className={`absolute inset-0 w-full h-full z-30 transition-all ${
-                isAnnotationOpen ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'
+                // Active for drawing when annotation open; always visible (transparent) to receive remote strokes on file
+                isAnnotationOpen
+                  ? 'cursor-crosshair pointer-events-auto'
+                  : sharedFile
+                  ? 'pointer-events-none opacity-100' // show remote annotations on file even without pen tool
+                  : 'pointer-events-none opacity-0'
               }`}
             />
 
