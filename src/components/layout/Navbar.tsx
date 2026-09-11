@@ -140,9 +140,6 @@ export default function Navbar() {
               <span className="rounded-md bg-[#4F5DE4]/10 text-[#4F5DE4] dark:bg-[#4F5DE4]/20 dark:text-[#aab5f5] px-1.5 py-0.5 text-[9px] font-black border border-[#4F5DE4]/20">
                 التعليمي
               </span>
-              <span className="hidden xl:inline-block text-[9px] font-mono font-bold text-[#697585] dark:text-[#8d85cb] tracking-wider">
-                alhadaaf
-              </span>
             </div>
             <p className="text-[9px] font-semibold text-[#697585] dark:text-[#B3ADE1] leading-tight flex items-center gap-1 mt-0.5">
               <span>{currentCountry.flag}</span>
