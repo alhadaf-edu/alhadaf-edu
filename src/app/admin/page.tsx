@@ -446,15 +446,23 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // --- Handlers for YouTube Sync ---
+  // --- Handlers for YouTube Sync مع نافذة تأكيد OK وحفظ دائم بقاعدة البيانات ---
   const handleSyncYouTube = async () => {
     setSyncing(true);
-    setSyncMessage('');
+    setSyncMessage('جاري مزامنة القناة وحفظ الدروس في قاعدة البيانات...');
     try {
       const res = await syncWithYouTube();
       setSyncMessage(res.message);
+      if (res.success) {
+        // نافذة منبثقة بمجرد الانتهاء يضغط المشرف OK
+        window.alert(`🎉 ${res.message}\n\nتم حفظ وتثبيت كافة الدروس رسمياً في قاعدة بيانات الموقع لجميع الزوار والطلاب.`);
+      } else {
+        window.alert(`⚠️ تنبيه: ${res.message}`);
+      }
     } catch (err: any) {
-      setSyncMessage('حدث خطأ أثناء المزامنة، يرجى إعادة المحاولة.');
+      const errMsg = 'حدث خطأ أثناء الاتصال بقناة اليوتيوب، يرجى إعادة المحاولة لاحقاً.';
+      setSyncMessage(errMsg);
+      window.alert(errMsg);
     } finally {
       setSyncing(false);
     }
