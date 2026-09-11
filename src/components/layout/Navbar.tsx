@@ -149,7 +149,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden xl:flex items-center gap-1 2xl:gap-2 shrink min-w-0">
+        <nav className="hidden 2xl:flex items-center gap-1.5 shrink min-w-0">
           {mainNavLinks.map((link) => {
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
 
@@ -330,14 +330,14 @@ export default function Navbar() {
 
           {/* Responsive Quick Search (Compact icon on laptop / expands on click) */}
           <div className="relative flex items-center" ref={searchRef}>
-            {/* Expanded search popup for smaller desktop screens (< 1280px) */}
+            {/* Expanded search popup for screens (< 2xl) */}
             {searchOpen && (
               <form 
                 onSubmit={(e) => {
                   handleSearch(e);
                   setSearchOpen(false);
                 }} 
-                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl z-50 flex items-center gap-2 animate-fade-in xl:hidden"
+                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl z-50 flex items-center gap-2 animate-fade-in 2xl:hidden"
               >
                 <input
                   ref={searchInputRef}
@@ -365,7 +365,7 @@ export default function Navbar() {
               </form>
             )}
 
-            {/* Laptop button: icon only on lg (< 1280px) */}
+            {/* Icon only on screens (< 2xl) */}
             <button
               type="button"
               onClick={() => {
@@ -373,13 +373,13 @@ export default function Navbar() {
                 setTimeout(() => searchInputRef.current?.focus(), 100);
               }}
               title="بحث في المنصة"
-              className="flex xl:hidden h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              className="flex 2xl:hidden h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
               <Search className="h-3.5 w-3.5" />
             </button>
 
-            {/* Full search input only on wide screens (>= 1280px) */}
-            <form onSubmit={handleSearch} className="hidden xl:flex relative items-center">
+            {/* Full search input only on wide screens (>= 2xl) */}
+            <form onSubmit={handleSearch} className="hidden 2xl:flex relative items-center">
               <input
                 type="text"
                 placeholder="ابحث عن درس..."
@@ -490,7 +490,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex 2xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="القائمة"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -500,7 +500,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
+        <div className="2xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
           <form onSubmit={handleSearch} className="relative">
             <input
               type="text"

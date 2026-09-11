@@ -22,6 +22,9 @@ export async function uploadToCloudinary(
   const apiSecret = 'bUi7HzF7e4XgyFv7dA6wquQ9Nos';
   const timestamp = Math.floor(Date.now() / 1000);
 
+  const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name || '');
+  const resourceType = isImage ? 'image' : 'raw';
+
   // 1. Direct browser-to-Cloudinary upload (Ultra fast ~1s, permanent HTTPS CDN for all students)
   try {
     const strToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
@@ -36,7 +39,7 @@ export async function uploadToCloudinary(
       formData.append('signature', signature);
     }
 
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
       method: 'POST',
       body: formData,
     });

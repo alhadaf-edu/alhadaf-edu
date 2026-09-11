@@ -96,7 +96,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     }
   };
 
-  // Handle Admin File Upload (Instantaneous 0.05s)
+  // Handle Admin File Upload (Direct Cloudinary CDN upload + Firestore sync)
   const handleUploadLessonFile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) return;
@@ -104,26 +104,18 @@ export default function LessonPage({ params }: LessonPageProps) {
     setUploadStatus('uploading');
 
     try {
-      let finalUrl = preloadedDataUrl;
-      if (!finalUrl) {
-        finalUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => resolve('');
-          reader.readAsDataURL(selectedFile);
-        });
+      // Direct fast upload to Cloudinary CDN (permanent HTTPS link for all students)
+      const res = await uploadToCloudinary(selectedFile, 'alhadaf_lesson_files');
+      if (!res?.url) {
+        throw new Error('تعذر رفع الملف إلى السحابة');
       }
 
-      // Fast cloud upload in background
-      try {
-        const res = await uploadToCloudinary(selectedFile, 'alhadaf_lesson_files');
-        if (res.url) finalUrl = res.url;
-      } catch {}
+      const finalUrl = res.url;
 
       const newAttachment: LessonAttachment = {
         id: `att_${Date.now()}`,
         title: fileTitle.trim() || selectedFile.name,
-        url: finalUrl || URL.createObjectURL(selectedFile),
+        url: finalUrl,
         size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
         type: selectedFile.name.endsWith('.pdf') ? 'pdf' : selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx') ? 'doc' : 'file',
         uploadedAt: new Date().toISOString().split('T')[0],
@@ -139,10 +131,11 @@ export default function LessonPage({ params }: LessonPageProps) {
       });
 
       setUploadStatus('success');
+      showToast('✅ تم رفع وتثبيت الملف في السحابة لجميع الطلاب!');
     } catch (error) {
       console.error('File upload failed:', error);
       setUploadStatus('idle');
-      alert('حدث خطأ أثناء رفع الملف، يرجى المحاولة مرة أخرى.');
+      alert('حدث خطأ أثناء رفع وتثبيت الملف في السحابة، يرجى المحاولة مرة أخرى.');
     }
   };
 
