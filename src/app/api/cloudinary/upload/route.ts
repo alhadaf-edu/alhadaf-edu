@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
     }
 
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'qbavq5bs';
-    const apiKey = process.env.CLOUDINARY_API_KEY || '861193287964773';
-    const apiSecret = process.env.CLOUDINARY_API_SECRET || 'bUi7HzF7e4XgyFv7dA6wquQ9Nos';
+    const apiKey = process.env.CLOUDINARY_API_KEY || '557177435223116';
+    const apiSecret = process.env.CLOUDINARY_API_SECRET || 'm-UtPrsuMIFT2-ae4VY1u4EvP6I';
 
     const timestamp = Math.floor(Date.now() / 1000);
 

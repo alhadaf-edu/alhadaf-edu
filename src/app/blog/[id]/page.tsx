@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -16,7 +16,9 @@ import {
   ArrowLeft,
   GraduationCap
 } from 'lucide-react';
-import { getArticleById, ALL_BLOG_ARTICLES } from '@/lib/blogData';
+import { getArticleById, ALL_BLOG_ARTICLES, BlogArticle } from '@/lib/blogData';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import AdSenseSlot from '@/components/common/AdSenseSlot';
 import ShareButtons from '@/components/common/ShareButtons';
 
@@ -25,7 +27,18 @@ interface ArticlePageProps {
 }
 
 export default function ArticlePage({ params }: ArticlePageProps) {
-  const article = getArticleById(params.id) || ALL_BLOG_ARTICLES.find(a => a.id === params.id) || ALL_BLOG_ARTICLES[0];
+  const [article, setArticle] = useState<BlogArticle | undefined>(() => getArticleById(params.id));
+
+  useEffect(() => {
+    // If not found in memory, try fetching from Firestore
+    if (!article && db) {
+      getDoc(doc(db, 'articles', params.id)).then((snap) => {
+        if (snap.exists()) {
+          setArticle(snap.data() as BlogArticle);
+        }
+      }).catch(e => console.warn(e));
+    }
+  }, [params.id, article]);
 
   if (!article) {
     return (

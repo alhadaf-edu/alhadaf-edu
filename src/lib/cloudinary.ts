@@ -18,14 +18,15 @@ export async function uploadToCloudinary(
   folder: string = 'alhadaf_lessons'
 ): Promise<{ url: string; publicId: string }> {
   const cloudName = 'qbavq5bs';
-  const apiKey = '861193287964773';
-  const apiSecret = 'bUi7HzF7e4XgyFv7dA6wquQ9Nos';
+  const apiKey = '557177435223116';
+  const apiSecret = 'm-UtPrsuMIFT2-ae4VY1u4EvP6I';
   const timestamp = Math.floor(Date.now() / 1000);
 
   const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name || '');
   const resourceType = isImage ? 'image' : 'raw';
 
   // 1. First choice: Same-origin Server API route (immune to CORS, client crypto issues, and ISP blocks)
+  let lastErrorMsg = '';
   try {
     const sFormData = new FormData();
     sFormData.append('file', file);
@@ -43,9 +44,14 @@ export async function uploadToCloudinary(
           publicId: sData.publicId || `cld_${Date.now()}`,
         };
       }
+    } else {
+      const errText = await sRes.text();
+      lastErrorMsg = `Server error (${sRes.status}): ${errText}`;
+      console.warn(lastErrorMsg);
     }
-  } catch (sErr) {
-    console.warn('Server upload route note, trying direct upload:', sErr);
+  } catch (sErr: any) {
+    lastErrorMsg = sErr?.message || 'Server upload route failed';
+    console.warn('Server upload route error, trying direct upload:', sErr);
   }
 
   // 2. Direct browser-to-Cloudinary upload fallback
@@ -82,10 +88,15 @@ export async function uploadToCloudinary(
           publicId: data.public_id || `cld_${Date.now()}`,
         };
       }
+    } else {
+      const errBody = await res.text();
+      lastErrorMsg = `Direct upload error (${res.status}): ${errBody}`;
+      console.warn(lastErrorMsg);
     }
-  } catch (cErr) {
+  } catch (cErr: any) {
+    lastErrorMsg = cErr?.message || 'Direct Cloudinary upload failed';
     console.warn('Direct Cloudinary upload error:', cErr);
   }
 
-  throw new Error('تعذر رفع وتثبيت الملف في السحابة. يرجى التحقق من اتصال الإنترنت.');
+  throw new Error(`تعذر رفع وتثبيت الملف في السحابة: ${lastErrorMsg || 'يرجى التحقق من اتصال الإنترنت'}`);
 }

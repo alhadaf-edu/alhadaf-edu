@@ -146,6 +146,36 @@ export const ALL_BLOG_ARTICLES: BlogArticle[] = [
   }
 ];
 
+export const BLOG_STORAGE_KEY = 'alhadaf_custom_blog_articles';
+
+export function getCustomArticles(): BlogArticle[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(BLOG_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveCustomArticle(article: BlogArticle): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getCustomArticles();
+    const updated = [article, ...existing.filter(a => a.id !== article.id)];
+    localStorage.setItem(BLOG_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to save article locally:', e);
+  }
+}
+
+export function getAllArticles(customArticles: BlogArticle[] = []): BlogArticle[] {
+  const custom = customArticles.length > 0 ? customArticles : getCustomArticles();
+  const customIds = new Set(custom.map(a => a.id));
+  return [...custom, ...ALL_BLOG_ARTICLES.filter(a => !customIds.has(a.id))];
+}
+
 export function getArticleById(id: string): BlogArticle | undefined {
-  return ALL_BLOG_ARTICLES.find((a) => a.id === id);
+  const all = getAllArticles();
+  return all.find((a) => a.id === id);
 }

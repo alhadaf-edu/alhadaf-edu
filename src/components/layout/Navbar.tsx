@@ -103,7 +103,8 @@ export default function Navbar() {
     { name: 'بنك الاختبارات', href: '/quizzes', icon: FileQuestion },
     { 
       name: 'المقالات', 
-      href: '/blog' 
+      href: '/blog',
+      icon: BookOpen,
     },
   ];
 
@@ -218,18 +219,22 @@ export default function Navbar() {
               );
             }
 
+            const Icon = link.icon;
             return (
               <React.Fragment key={link.name}>
                 {idx > 0 && <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />}
                 <Link
                   href={link.href}
-                  className={`px-2.5 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
                     isActive
                       ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
-                      : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                      : link.highlight
+                        ? 'text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50'
+                        : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
                   }`}
                 >
-                  {link.name}
+                  {Icon && <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" />}
+                  <span>{link.name}</span>
                 </Link>
               </React.Fragment>
             );
