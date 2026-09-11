@@ -61,13 +61,13 @@ export default function HeroSection() {
             <div className="inline-flex items-center gap-2.5 rounded-full border border-[#4F5DE4]/40 bg-[#4F5DE4]/15 px-4 py-1.5 backdrop-blur-md">
               <span className="text-lg leading-none">{countryInfo.flag}</span>
               <span className="text-xs sm:text-sm font-bold text-[#E0E3FD]">
-                منصة الهَدَّاف التعليمية الرسمية لمناهج {countryInfo.name}
+                منصة الهداف التعليمي (alhadaaf) — مناهج {countryInfo.name}
               </span>
             </div>
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-heading tracking-tight leading-[1.25] text-white">
-              طريقك نحو <span className="text-transparent bg-clip-text bg-gradient-to-l from-[#F57005] via-[#fb923c] to-[#fde68a]">القمة والدرجات الكاملة</span> في دراستك
+              الهداف التعليمي — طريقك نحو <span className="text-transparent bg-clip-text bg-gradient-to-l from-[#F57005] via-[#fb923c] to-[#fde68a]">القمة والدرجات الكاملة</span>
             </h1>
 
             {/* Description */}

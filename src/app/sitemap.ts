@@ -7,12 +7,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     '',
     '/curriculum',
+    '/live-classes',
     '/quizzes',
     '/videos',
     '/blog',
     '/about',
     '/contact',
     '/faq',
+    '/search',
     '/privacy',
     '/terms',
     '/auth/login',
@@ -21,7 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
-    priority: route === '' ? 1.0 : 0.8,
+    priority: route === '' ? 1.0 : route === '/live-classes' || route === '/curriculum' ? 0.9 : 0.8,
   }));
 
   const lessonRoutes = INITIAL_LESSONS.map((lesson) => ({

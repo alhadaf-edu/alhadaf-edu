@@ -102,6 +102,9 @@ export default function Footer() {
                 <span className="rounded-lg bg-[#4F5DE4]/20 text-[#aab5f5] px-2 py-0.5 text-xs font-black border border-[#4F5DE4]/30">
                   التعليمي
                 </span>
+                <span className="text-xs font-mono font-bold text-[#8d85cb] tracking-wider">
+                  alhadaaf
+                </span>
               </div>
             </div>
 

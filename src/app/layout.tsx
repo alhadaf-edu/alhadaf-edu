@@ -26,42 +26,63 @@ const cairo = Cairo({
 
 export const metadata: Metadata = {
   title: {
-    default: 'منصة الهَدَّاف التعليمية | دروس وشرح المناهج العربية',
-    template: '%s | منصة الهَدَّاف التعليمية',
+    default: 'منصة الهداف التعليمي | alhadaaf edu | دروس وشروحات المناهج العربية',
+    template: '%s | الهداف التعليمي alhadaaf',
   },
-  description: 'الهداف التعليمي — منصة تعليمية عربية شاملة تقدم شرح المناهج الدراسية لجميع الصفوف والمراحل (ابتدائي، متوسط، ثانوي) في مصر والسعودية والإمارات والكويت والأردن وغيرها. مذكرات PDF، اختبارات تفاعلية، وحصص مباشرة.',
+  description: 'الهداف التعليمي (alhadaaf edu) — المنصة التعليمية الرائدة لشرح المناهج الدراسية لجميع المراحل (ابتدائي، متوسط، إعدادي، ثانوي) في مصر والسعودية والإمارات والكويت والأردن. ملخصات PDF، حصص مباشرة تفاعلية، واختبارات قياس وقدرات وتحصيلي.',
   keywords: [
-    'الهداف التعليمي',
-    'الهداف',
-    'هداف تعليمي',
-    'منصة الهداف',
+    // الاسم بالإنجليزي بصيغة alhadaaf المطلوبة وكل مشتقاتها
+    'alhadaaf',
+    'alhadaaf edu',
+    'alhadaaf educational',
+    'alhadaaf platform',
     'alhadaf',
     'alhadaf edu',
+    'al hadaaf',
+    'al hadaf',
+    // الاسم بالعربي بجميع أشكاله الإملائية والشائعة
+    'الهداف',
+    'الهدف',
+    'الهداف التعليمي',
     'الهداف التعليمية',
+    'منصة الهداف',
+    'منصة الهداف التعليمي',
     'منصة الهداف التعليمية',
-    'شرح المناهج',
+    'منصة الْهَدَّاف التعليمية',
+    'قناة الهداف التعليمية',
+    'موقع الهداف',
+    'موقع الهداف التعليمي',
+    'موقع الهداف التعليمية',
+    'الاهداف التعليمية',
+    // الكلمات التعليمية المستهدفة في البحث
+    'شرح المناهج العربية',
     'المناهج السعودية',
     'المناهج المصرية',
     'المناهج الإماراتية',
     'المناهج الكويتية',
-    'مناهج الثانوية العامة',
-    'مناهج الإعدادية',
-    'شرح الرياضيات',
-    'شرح الفيزياء',
-    'شرح الكيمياء',
-    'شرح اللغة العربية',
-    'شرح الإنجليزي',
+    'منهج سلطنة عمان',
+    'منهج الأردن',
+    'الثانوية العامة',
+    'الشهادة الإعدادية',
     'نظام المسارات',
     'اختبارات تحصيلي',
     'اختبارات قدرات',
     'ملخصات دراسية PDF',
-    'حصص مباشرة تعليمية',
-    'تعليم اون لاين',
-    'دروس خصوصية اون لاين',
+    'حصص مباشرة',
+    'حصص تفاعلية مباشرة',
+    'شرح الرياضيات',
+    'شرح العلوم',
+    'شرح الفيزياء',
+    'شرح الكيمياء',
+    'شرح الأحياء',
+    'شرح اللغة العربية',
+    'شرح اللغة الإنجليزية',
+    'دروس اون لاين',
+    'منصة تعليم عن بعد'
   ],
-  authors: [{ name: 'منصة الهَدَّاف التعليمية', url: 'https://alhadaf-edu.vercel.app' }],
-  creator: 'منصة الهَدَّاف التعليمية',
-  publisher: 'منصة الهَدَّاف التعليمية',
+  authors: [{ name: 'الهداف التعليمي alhadaaf edu', url: 'https://alhadaf-edu.vercel.app' }],
+  creator: 'الهداف التعليمي alhadaaf',
+  publisher: 'الهداف التعليمي alhadaaf',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://alhadaf-edu.vercel.app'),
   alternates: {
     canonical: 'https://alhadaf-edu.vercel.app',
@@ -75,22 +96,22 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'ar_AR',
     url: 'https://alhadaf-edu.vercel.app',
-    title: 'الهداف التعليمي | شرح المناهج العربية لجميع المراحل',
-    description: 'منصة الهداف التعليمية — شرح دروس ومناهج جميع الصفوف في مصر والسعودية والإمارات والكويت. اختبارات تفاعلية، ملخصات PDF، وحصص مباشرة.',
-    siteName: 'منصة الهَدَّاف التعليمية',
+    title: 'الهداف التعليمي | alhadaaf edu | شروحات المناهج العربية والحصص المباشرة',
+    description: 'منصة الهداف التعليمي (alhadaaf edu) — شروحات تفاعلية، اختبارات ذكية، ملخصات ومذكرات PDF، وحصص افتراضية مباشرة لكل المراحل التعليمية.',
+    siteName: 'الهداف التعليمي | alhadaaf',
     images: [
       {
         url: '/logo.png',
         width: 512,
         height: 512,
-        alt: 'منصة الهداف التعليمي',
+        alt: 'شعار الهداف التعليمي alhadaaf edu',
       }
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'الهداف التعليمي | شرح المناهج العربية',
-    description: 'شرح دروس ومناهج جميع الصفوف — اختبارات تفاعلية وحصص مباشرة.',
+    title: 'الهداف التعليمي | alhadaaf edu',
+    description: 'شروحات المناهج العربية والحصص المباشرة والاختبارات التفاعلية لجميع المراحل.',
     images: ['/logo.png'],
   },
   robots: {
@@ -105,7 +126,6 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    // أضف Google Search Console verification code هنا
     google: 'alhadaf-edu-google-site-verification',
   },
   category: 'education',
@@ -116,32 +136,46 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'EducationalOrganization',
-    name: 'الهداف التعليمي',
-    alternateName: ['منصة الهداف', 'الهداف التعليمية', 'alhadaf edu'],
-    url: 'https://alhadaf-edu.vercel.app',
-    logo: 'https://alhadaf-edu.vercel.app/logo.png',
-    image: 'https://alhadaf-edu.vercel.app/logo.png',
-    description: 'الهداف التعليمي — منصة تعليمية عربية شاملة تقدم شرح المناهج الدراسية والحصص المباشرة التفاعلية لجميع الصفوف والمراحل في مصر والسعودية والإمارات والكويت والأردن.',
-    email: 'alhadaafpro@gmail.com',
-    sameAs: [
-      'https://www.youtube.com/channel/UCb9BGNPlPd2dzg9lJsIaFYQ',
-      'https://t.me/alhadaf_edu',
-      'https://t.me/alhadaaf_edu',
-      'https://www.threads.com/@alhadaf_edu',
-    ],
-    hasOfferCatalog: {
-      '@type': 'OfferCatalog',
-      name: 'الدروس والحصص التعليمية',
-      itemListElement: [
-        { '@type': 'Course', name: 'شرح المناهج السعودية', provider: { '@type': 'Organization', name: 'الهداف التعليمي' } },
-        { '@type': 'Course', name: 'شرح المناهج المصرية', provider: { '@type': 'Organization', name: 'الهداف التعليمي' } },
-        { '@type': 'Course', name: 'حصص مباشرة تفاعلية', provider: { '@type': 'Organization', name: 'الهداف التعليمي' } },
-      ]
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'الهداف التعليمي | alhadaaf',
+      alternateName: ['alhadaaf', 'alhadaaf edu', 'منصة الهداف التعليمي', 'الهداف التعليمية', 'منصة الهداف', 'alhadaf'],
+      url: 'https://alhadaf-edu.vercel.app',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: 'https://alhadaf-edu.vercel.app/search?q={search_term_string}',
+        'query-input': 'required name=search_term_string'
+      }
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'EducationalOrganization',
+      name: 'الهداف التعليمي (alhadaaf edu)',
+      alternateName: ['alhadaaf', 'alhadaaf edu', 'منصة الهداف', 'الهداف التعليمية', 'منصة الهداف التعليمي', 'alhadaf', 'alhadaf edu'],
+      url: 'https://alhadaf-edu.vercel.app',
+      logo: 'https://alhadaf-edu.vercel.app/logo.png',
+      image: 'https://alhadaf-edu.vercel.app/logo.png',
+      description: 'الهداف التعليمي (alhadaaf edu) — منصة تعليمية عربية شاملة لشروحات المناهج الدراسية والحصص المباشرة والاختبارات التفاعلية.',
+      email: 'alhadaafpro@gmail.com',
+      sameAs: [
+        'https://www.youtube.com/channel/UCb9BGNPlPd2dzg9lJsIaFYQ',
+        'https://t.me/alhadaf_edu',
+        'https://t.me/alhadaaf_edu',
+        'https://www.threads.com/@alhadaf_edu',
+      ],
+      hasOfferCatalog: {
+        '@type': 'OfferCatalog',
+        name: 'الدروس والحصص التعليمية',
+        itemListElement: [
+          { '@type': 'Course', name: 'شرح المناهج السعودية', provider: { '@type': 'Organization', name: 'الهداف التعليمي alhadaaf' } },
+          { '@type': 'Course', name: 'شرح المناهج المصرية', provider: { '@type': 'Organization', name: 'الهداف التعليمي alhadaaf' } },
+          { '@type': 'Course', name: 'حصص مباشرة تفاعلية', provider: { '@type': 'Organization', name: 'الهداف التعليمي alhadaaf' } },
+        ]
+      }
     }
-  };
+  ];
 
   return (
     <html lang="ar" dir="rtl" className={`${notoKufi.variable} ${cairo.variable}`} suppressHydrationWarning>
