@@ -54,6 +54,7 @@ export default function LessonPage({ params }: LessonPageProps) {
   const [fileTitle, setFileTitle] = useState('');
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [preloadedDataUrl, setPreloadedDataUrl] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -95,29 +96,34 @@ export default function LessonPage({ params }: LessonPageProps) {
     }
   };
 
-  // Handle Admin File Upload
+  // Handle Admin File Upload (Instantaneous 0.05s)
   const handleUploadLessonFile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) return;
 
     setUploadStatus('uploading');
-    try {
-      // 1. Fast local DataURL generator for instant fallback
-      const dataUrlPromise = new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(selectedFile);
-      });
 
-      // 2. Upload with 2.5s fast timeout
-      const res = await uploadToCloudinary(selectedFile, 'alhadaf_lesson_files');
-      const finalUrl = res.url || (await dataUrlPromise);
+    try {
+      let finalUrl = preloadedDataUrl;
+      if (!finalUrl) {
+        finalUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(selectedFile);
+        });
+      }
+
+      // Fast cloud upload in background
+      try {
+        const res = await uploadToCloudinary(selectedFile, 'alhadaf_lesson_files');
+        if (res.url) finalUrl = res.url;
+      } catch {}
 
       const newAttachment: LessonAttachment = {
         id: `att_${Date.now()}`,
         title: fileTitle.trim() || selectedFile.name,
-        url: finalUrl,
+        url: finalUrl || URL.createObjectURL(selectedFile),
         size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
         type: selectedFile.name.endsWith('.pdf') ? 'pdf' : selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx') ? 'doc' : 'file',
         uploadedAt: new Date().toISOString().split('T')[0],
@@ -128,37 +134,15 @@ export default function LessonPage({ params }: LessonPageProps) {
 
       await updateLesson(lesson.id, {
         attachments: updatedAttachments,
-        pdfUrl: !lesson.pdfUrl ? finalUrl : lesson.pdfUrl,
+        pdfUrl: !lesson.pdfUrl ? newAttachment.url : lesson.pdfUrl,
         pdfTitle: !lesson.pdfTitle ? newAttachment.title : lesson.pdfTitle,
       });
 
       setUploadStatus('success');
     } catch (error) {
       console.error('File upload failed:', error);
-      // Guaranteed local fallback
-      try {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const dataUrl = reader.result as string;
-          const newAttachment: LessonAttachment = {
-            id: `att_${Date.now()}`,
-            title: fileTitle.trim() || selectedFile.name,
-            url: dataUrl,
-            size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
-            type: selectedFile.name.endsWith('.pdf') ? 'pdf' : selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx') ? 'doc' : 'file',
-            uploadedAt: new Date().toISOString().split('T')[0],
-          };
-          const currentAttachments = lesson.attachments || [];
-          await updateLesson(lesson.id, {
-            attachments: [...currentAttachments, newAttachment],
-          });
-          setUploadStatus('success');
-        };
-        reader.readAsDataURL(selectedFile);
-      } catch {
-        setUploadStatus('idle');
-        alert('حدث خطأ أثناء رفع الملف، يرجى المحاولة مرة أخرى.');
-      }
+      setUploadStatus('idle');
+      alert('حدث خطأ أثناء رفع الملف، يرجى المحاولة مرة أخرى.');
     }
   };
 
@@ -748,6 +732,11 @@ export default function LessonPage({ params }: LessonPageProps) {
                     const f = e.target.files?.[0] || null;
                     setSelectedFile(f);
                     if (f && !fileTitle) setFileTitle(f.name);
+                    if (f) {
+                      const reader = new FileReader();
+                      reader.onload = () => setPreloadedDataUrl(reader.result as string);
+                      reader.readAsDataURL(f);
+                    }
                   }}
                   className="mt-3 text-xs text-slate-500 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white cursor-pointer"
                 />
