@@ -213,6 +213,7 @@ export default function LiveClassRoomPage() {
   const [toolbarPos, setToolbarPos] = useState<{x: number; y: number}>({ x: 16, y: 16 });
   const isDraggingToolbar = useRef(false);
   const dragOffset = useRef<{x: number; y: number}>({ x: 0, y: 0 });
+  const [isShareBarMinimized, setIsShareBarMinimized] = useState(false);
 
   // Interactive Whiteboard State (سبورة بيضاء تفاعلية)
   const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
@@ -2028,50 +2029,14 @@ export default function LiveClassRoomPage() {
                   className="w-full h-full object-contain"
                 />
 
-                {/* Top Bar: Presenter Badge + Pen Button + Stop Button */}
-                <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-                  <div className="flex items-center gap-2 bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-blue-500/40 text-xs font-bold text-blue-300 shadow-xl">
+                {/* Presenter Name Badge for Viewers */}
+                {!isSupervisorForThisClass && (
+                  <div className="absolute top-3 right-3 z-20 flex items-center gap-2 bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-blue-500/40 text-xs font-bold text-blue-300 shadow-xl">
                     <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse inline-block" />
                     <MonitorUp className="w-3.5 h-3.5 text-blue-400" />
                     <span>يشارك: <strong className="text-white">{screenSharePresenter || 'أحد الحاضرين'}</strong></span>
                   </div>
-
-                  {/* Pen & Annotation Toggle Button right next to Stop Button */}
-                  {isSupervisorForThisClass && (
-                    <button
-                      onClick={() => {
-                        const next = !isAnnotationOpen;
-                        setIsAnnotationOpen(next);
-                        if (next && annotationCanvasRef.current) {
-                          const canvas = annotationCanvasRef.current;
-                          canvas.width = 1920;
-                          canvas.height = 1080;
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg border backdrop-blur-md transition-all ${
-                        isAnnotationOpen
-                          ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400/60 shadow-purple-500/30 ring-2 ring-purple-400/40'
-                          : 'bg-slate-900/95 hover:bg-slate-800 text-amber-300 border-amber-500/40 shadow-md'
-                      }`}
-                      title={isAnnotationOpen ? 'إخفاء شريط القلم' : 'تفعيل القلم وأدوات الرسم على الشاشة'}
-                    >
-                      <PenTool className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{isAnnotationOpen ? 'إغلاق القلم' : 'قلم ورسم'}</span>
-                    </button>
-                  )}
-
-                  {/* Stop sharing button (only for the presenter) */}
-                  {isScreenSharing && (
-                    <button
-                      onClick={toggleScreenShare}
-                      className="px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg border border-red-500/50 backdrop-blur-md transition-all"
-                      title="إيقاف مشاركة الشاشة"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      إيقاف
-                    </button>
-                  )}
-                </div>
+                )}
 
                 {/* Bottom-Right: PiP local camera (clickable to expand to fullscreen) */}
                 <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end gap-2">
@@ -2256,140 +2221,199 @@ export default function LiveClassRoomPage() {
               }`}
             />
 
-            {/* FLOATING ANNOTATION TOOLBAR — DRAGGABLE (قلم عائم قابل للسحب في كل مكان) */}
-            {isAnnotationOpen && (
+            {/* UNIFIED FLOATING SCREEN SHARE & PEN CONTROL BOX (مستطيل مشاركة الشاشة والقلم المتحرك في كل مكان) */}
+            {(isScreenSharing || isAnnotationOpen) && (
               <div
                 ref={toolbarRef}
-                className="fixed z-50 bg-slate-900/97 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-2 max-w-[95vw] select-none"
+                className="fixed z-50 bg-slate-900/95 border border-slate-700/90 rounded-2xl p-2 sm:p-2.5 shadow-2xl backdrop-blur-xl flex flex-col gap-2 max-w-[96vw] select-none animate-fade-in transition-all"
                 style={{ left: toolbarPos.x, top: toolbarPos.y }}
               >
-                {/* ↕ Drag Handle — hold and drag to move the toolbar anywhere */}
-                <div
-                  onPointerDown={handleToolbarPointerDown}
-                  onPointerMove={handleToolbarPointerMove}
-                  onPointerUp={handleToolbarPointerUp}
-                  onPointerCancel={handleToolbarPointerUp}
-                  className="cursor-grab active:cursor-grabbing p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors touch-none"
-                  title="اسحب من هنا لتحريك الشريط في أي مكان"
-                >
-                  <GripHorizontal className="w-5 h-5" />
+                {/* 1. Main Control Bar (المستطيل الرئيسي: السحب + يشارك + زر القلم + إيقاف المشاركة + زر الإخفاء) */}
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  {/* ↕ Drag Handle */}
+                  <div
+                    onPointerDown={handleToolbarPointerDown}
+                    onPointerMove={handleToolbarPointerMove}
+                    onPointerUp={handleToolbarPointerUp}
+                    onPointerCancel={handleToolbarPointerUp}
+                    className="cursor-grab active:cursor-grabbing p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors touch-none flex items-center gap-1"
+                    title="اسحب المستطيل لتحريكه في أي مكان على الشاشة"
+                  >
+                    <GripHorizontal className="w-4 h-4 text-slate-400" />
+                  </div>
+
+                  {/* Share / Annotation Status Badge */}
+                  <div className="flex items-center gap-1.5 bg-slate-950/80 px-2.5 py-1.5 rounded-xl border border-slate-800 text-xs font-bold text-blue-300">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse inline-block" />
+                    <MonitorUp className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-[11px] sm:text-xs">
+                      {isScreenSharing ? (
+                        <>يشارك: <strong className="text-white">{screenSharePresenter || 'أحد الحاضرين'}</strong></>
+                      ) : (
+                        <strong className="text-white">قلم ورسم على الشاشة</strong>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* زر قلم ورسم (يفتح أدوات الرسم داخل نفس المستطيل) */}
+                  {isSupervisorForThisClass && (
+                    <button
+                      onClick={() => {
+                        const next = !isAnnotationOpen;
+                        setIsAnnotationOpen(next);
+                        if (next) setIsShareBarMinimized(false);
+                        if (next && annotationCanvasRef.current) {
+                          const canvas = annotationCanvasRef.current;
+                          canvas.width = 1920;
+                          canvas.height = 1080;
+                        }
+                      }}
+                      className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md border transition-all ${
+                        isAnnotationOpen
+                          ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400/60 shadow-purple-500/30 ring-2 ring-purple-400/40'
+                          : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-500/40'
+                      }`}
+                      title={isAnnotationOpen ? 'إغلاق أدوات الرسم' : 'فتح أدوات القلم والرسم داخل نفس المستطيل'}
+                    >
+                      <PenTool className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-[11px] sm:text-xs">{isAnnotationOpen ? 'إغلاق القلم' : 'قلم ورسم'}</span>
+                    </button>
+                  )}
+
+                  {/* زر إيقاف المشاركة (يظهر أثناء مشاركة الشاشة) */}
+                  {isScreenSharing && (
+                    <button
+                      onClick={toggleScreenShare}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md border border-red-500/50 transition-all"
+                      title="إيقاف مشاركة الشاشة"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span className="text-[11px] sm:text-xs">إيقاف</span>
+                    </button>
+                  )}
+
+                  {/* زر الإخفاء / التصغير (Hide / Collapse) */}
+                  <button
+                    onClick={() => setIsShareBarMinimized(!isShareBarMinimized)}
+                    className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                    title={isShareBarMinimized ? 'إظهار لوحة التحكم كاملة' : 'إخفاء / تصغير الشريط'}
+                  >
+                    {isShareBarMinimized ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                  </button>
                 </div>
-                {/* Tool Selection */}
-                <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 gap-1">
-                  <button
-                    onClick={() => setAnnotationTool('pen')}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-                      annotationTool === 'pen'
-                        ? 'bg-emerald-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="قلم للكتابة الدقيقة"
-                  >
-                    <PenTool className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">قلم</span>
-                  </button>
 
-                  <button
-                    onClick={() => setAnnotationTool('highlighter')}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-                      annotationTool === 'highlighter'
-                        ? 'bg-amber-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="فرشاة تظليل وتحديد شبه شفافة"
-                  >
-                    <Paintbrush className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">فرشاة تظليل</span>
-                  </button>
-
-                  <button
-                    onClick={() => setAnnotationTool('eraser')}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-                      annotationTool === 'eraser'
-                        ? 'bg-red-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="ممحاة لمسح جزء من الرسم"
-                  >
-                    <Eraser className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">ممحاة</span>
-                  </button>
-                </div>
-
-                {/* Color Palette */}
-                {annotationTool !== 'eraser' && (
-                  <div className="flex items-center gap-1.5 bg-slate-950/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
-                    {[
-                      { color: '#ef4444', label: 'أحمر' },
-                      { color: '#eab308', label: 'أصفر' },
-                      { color: '#10b981', label: 'أخضر' },
-                      { color: '#38bdf8', label: 'سماوي' },
-                      { color: '#f97316', label: 'برتقالي' },
-                      { color: '#ffffff', label: 'أبيض' },
-                      { color: '#000000', label: 'أسود' }
-                    ].map((c) => (
+                {/* 2. Expanded Pen & Drawing Tools (يظهر في نفس المستطيل عند تفعيل القلم وغير مصغر) */}
+                {isAnnotationOpen && !isShareBarMinimized && (
+                  <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center gap-2 animate-fade-in">
+                    {/* اختيار الأداة (قلم، تظليل، ممحاة) */}
+                    <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 gap-1">
                       <button
-                        key={c.color}
-                        onClick={() => setAnnotationColor(c.color)}
-                        className={`w-5 h-5 rounded-full transition-transform border ${
-                          annotationColor === c.color ? 'scale-125 ring-2 ring-white border-white' : 'border-slate-700 hover:scale-110'
+                        onClick={() => setAnnotationTool('pen')}
+                        className={`px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                          annotationTool === 'pen'
+                            ? 'bg-emerald-600 text-white shadow-md'
+                            : 'text-slate-400 hover:text-white'
                         }`}
-                        style={{ backgroundColor: c.color }}
-                        title={c.label}
-                      />
-                    ))}
+                        title="قلم للكتابة الدقيقة"
+                      >
+                        <PenTool className="w-3.5 h-3.5" />
+                        <span className="text-[11px] hidden sm:inline">قلم</span>
+                      </button>
+
+                      <button
+                        onClick={() => setAnnotationTool('highlighter')}
+                        className={`px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                          annotationTool === 'highlighter'
+                            ? 'bg-amber-600 text-white shadow-md'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="فرشاة تظليل شبه شفافة"
+                      >
+                        <Paintbrush className="w-3.5 h-3.5" />
+                        <span className="text-[11px] hidden sm:inline">تظليل</span>
+                      </button>
+
+                      <button
+                        onClick={() => setAnnotationTool('eraser')}
+                        className={`px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                          annotationTool === 'eraser'
+                            ? 'bg-red-600 text-white shadow-md'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="ممحاة لمسح جزء من الرسم"
+                      >
+                        <Eraser className="w-3.5 h-3.5" />
+                        <span className="text-[11px] hidden sm:inline">ممحاة</span>
+                      </button>
+                    </div>
+
+                    {/* باليت الألوان */}
+                    {annotationTool !== 'eraser' && (
+                      <div className="flex items-center gap-1.5 bg-slate-950/80 px-2 py-1.5 rounded-xl border border-slate-800">
+                        {[
+                          { color: '#ef4444', label: 'أحمر' },
+                          { color: '#eab308', label: 'أصفر' },
+                          { color: '#10b981', label: 'أخضر' },
+                          { color: '#38bdf8', label: 'سماوي' },
+                          { color: '#f97316', label: 'برتقالي' },
+                          { color: '#ffffff', label: 'أبيض' },
+                          { color: '#000000', label: 'أسود' }
+                        ].map((c) => (
+                          <button
+                            key={c.color}
+                            onClick={() => setAnnotationColor(c.color)}
+                            className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full transition-transform border ${
+                              annotationColor === c.color ? 'scale-125 ring-2 ring-white border-white' : 'border-slate-700 hover:scale-110'
+                            }`}
+                            style={{ backgroundColor: c.color }}
+                            title={c.label}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* سمك الخط */}
+                    <div className="flex items-center gap-1 bg-slate-950/80 px-1.5 py-1.5 rounded-xl border border-slate-800">
+                      {[
+                        { size: 3, label: 'رفيع' },
+                        { size: 6, label: 'متوسط' },
+                        { size: 12, label: 'عريض' }
+                      ].map((s) => (
+                        <button
+                          key={s.size}
+                          onClick={() => setAnnotationSize(s.size)}
+                          className={`px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold transition-all ${
+                            annotationSize === s.size ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* زر قلم عائم خارج المتصفح Always-on-Top */}
+                    {isSupervisorForThisClass && (
+                      <button
+                        onClick={openFloatingPenWindow}
+                        className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
+                        title="فتح نافذة قلم عائمة Always-on-Top خارج المتصفح للكتابة فوق البوربوينت والتطبيقات"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+                        <span className="text-[11px] hidden sm:inline">قلم خارج المتصفح</span>
+                      </button>
+                    )}
+
+                    {/* زر مسح الكل عند الجميع */}
+                    <button
+                      onClick={clearAnnotationCanvas}
+                      className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold flex items-center gap-1 transition-all"
+                      title="مسح كل الرسومات عند جميع الحاضرين"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="text-[11px] hidden md:inline">مسح الكل</span>
+                    </button>
                   </div>
                 )}
-
-                {/* Stroke Sizes */}
-                <div className="flex items-center gap-1 bg-slate-950/80 px-2 py-1.5 rounded-xl border border-slate-800">
-                  {[
-                    { size: 3, label: 'رفيع' },
-                    { size: 6, label: 'متوسط' },
-                    { size: 12, label: 'عريض' }
-                  ].map((s) => (
-                    <button
-                      key={s.size}
-                      onClick={() => setAnnotationSize(s.size)}
-                      className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all ${
-                        annotationSize === s.size ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Popout / Floating Outside Browser Button */}
-                {isSupervisorForThisClass && (
-                  <button
-                    onClick={openFloatingPenWindow}
-                    className="px-2.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
-                    title="فتح نافذة قلم عائمة Always-on-Top خارج المتصفح للكتابة فوق البوربوينت والتطبيقات"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
-                    <span className="hidden sm:inline">قلم خارج المتصفح</span>
-                  </button>
-                )}
-
-                {/* Clear All */}
-                <button
-                  onClick={clearAnnotationCanvas}
-                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold flex items-center gap-1 transition-all"
-                  title="مسح كل الرسومات"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">مسح الكل</span>
-                </button>
-
-                {/* Close Toolbar */}
-                <button
-                  onClick={() => setIsAnnotationOpen(false)}
-                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-                  title="إغلاق شريط أدوات الرسم"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
             )}
 
