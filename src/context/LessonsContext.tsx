@@ -37,7 +37,7 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
   const [lessons, setLessons] = useState<Lesson[]>(INITIAL_LESSONS);
   const [quizzes, setQuizzes] = useState<Quiz[]>(STANDALONE_QUIZZES);
   const [selectedCountry, setSelectedCountryState] = useState<CountryCode>('sa');
-  const [syncMode, setSyncModeState] = useState<'auto' | 'manual'>('manual');
+  const [syncMode, setSyncModeState] = useState<'auto' | 'manual'>('auto');
   const [loading, setLoading] = useState<boolean>(true);
 
   const setSelectedCountry = (country: CountryCode) => {
@@ -82,6 +82,23 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
         if (Array.isArray(parsedQ) && parsedQ.length > 0) setQuizzes(parsedQ);
       }
     } catch {}
+
+    // 2b. Auto-sync trigger on startup (reads latest YouTube videos automatically)
+    const triggerInitialAutoSync = async () => {
+      try {
+        const lastSync = localStorage.getItem('alhadaf_last_sync_timestamp');
+        const now = Date.now();
+        // Auto-sync if never synced or synced > 30 minutes ago
+        if (!lastSync || now - parseInt(lastSync, 10) > 30 * 60 * 1000) {
+          console.log('🔄 Triggering automatic YouTube sync on startup...');
+          // Small delay to allow initial load to settle
+          setTimeout(() => {
+            syncWithYouTube().catch((e) => console.warn('Background auto-sync note:', e));
+          }, 1500);
+        }
+      } catch {}
+    };
+    triggerInitialAutoSync();
 
     if (!db) {
       setLoading(false);
@@ -371,6 +388,11 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
           console.warn('Firestore bulk sync note:', e);
         }
       }
+
+      // 3. Save sync timestamp
+      try {
+        localStorage.setItem('alhadaf_last_sync_timestamp', String(Date.now()));
+      } catch {}
 
       const totalEffect = addedCount + updatedCount;
       const playlistMsg = playlistsCount > 0 ? ` ومزامنة ${playlistsCount} قائمة تشغيل` : '';

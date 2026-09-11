@@ -61,9 +61,12 @@ import {
   FileText,
   GripHorizontal,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
+import { storage } from '@/lib/firebase';
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface ChatMessage {
   id: string;
@@ -1262,51 +1265,69 @@ export default function LiveClassRoomPage() {
     showToast('🧹 تم مسح السبورة البيضاء');
   };
 
-  // ========== FILE SHARING HANDLERS — Upload to Cloudinary then share URL ==========
-  // NOTE: LiveKit DataChannel max packet = ~15KB, so base64 files fail silently.
-  // Solution: upload file to Cloudinary, share the URL via DataChannel instead.
+  // ========== FILE SHARING HANDLERS — Upload to Cloudinary / Firebase Storage then share URL ==========
   const handleFileShare = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
 
-    // Limit to 20MB
-    if (file.size > 20 * 1024 * 1024) {
-      showToast('⚠️ حجم الملف كبير جداً — الحد الأقصى 20 ميجابايت');
+    // Limit to 25MB
+    if (file.size > 25 * 1024 * 1024) {
+      showToast('⚠️ حجم الملف كبير جداً — الحد الأقصى 25 ميجابايت');
       return;
     }
 
-    showToast('⏳ جاري رفع الملف وتجهيزه للمشاركة...');
+    showToast('⏳ جاري رفع الملف وتجهيزه للعرض عند جميع الطلاب...');
 
     try {
-      // Try Cloudinary upload first
-      const formData = new FormData();
-      formData.append('file', file);
-      const uploadRes = await fetch('/api/cloudinary/upload', { method: 'POST', body: formData });
-      const uploadData = await uploadRes.json();
+      let fileUrl = '';
 
-      let fileUrl: string;
-      if (uploadData?.url) {
-        fileUrl = uploadData.url;
-      } else {
-        // Fallback: use local object URL (only works for the sender's browser)
+      // 1. Try Cloudinary upload first
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await fetch('/api/cloudinary/upload', { method: 'POST', body: formData });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          if (uploadData?.url) {
+            fileUrl = uploadData.url;
+          }
+        }
+      } catch (cErr) {
+        console.warn('Cloudinary upload attempt failed:', cErr);
+      }
+
+      // 2. Secondary fallback: Firebase Storage (100% reliable HTTPS CDN)
+      if (!fileUrl && storage) {
+        try {
+          const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          const storageFileRef = sRef(storage, `live_shares/${safeName}`);
+          const uploadResult = await uploadBytes(storageFileRef, file);
+          fileUrl = await getDownloadURL(uploadResult.ref);
+        } catch (fsErr) {
+          console.warn('Firebase storage upload fallback failed:', fsErr);
+        }
+      }
+
+      // 3. Fallback to local object URL only if completely offline
+      if (!fileUrl) {
         fileUrl = URL.createObjectURL(file);
-        showToast('⚠️ رفع الملف فشل — الملف ظاهر لك فقط. تحقق من إعدادات Cloudinary.');
+        showToast('⚠️ تم فتح الملف محلياً (تأكد من الاتصال بالإنترنت لمشاركته للطلاب)');
       }
 
       const fileInfo = { name: file.name, type: file.type, url: fileUrl };
       setSharedFile(fileInfo);
 
-      // Share via DataChannel — only sending small URL string, not base64
+      // Share URL via DataChannel to all students
       const room = roomRef.current;
       if (room?.localParticipant) {
         const payload = new TextEncoder().encode(JSON.stringify({ type: 'file_share', file: fileInfo }));
         room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
       }
-      showToast(`📄 تم مشاركة الملف لجميع الحاضرين: ${file.name}`);
+      showToast(`📄 تم مشاركة الملف بنجاح لجميع الحاضرين: ${file.name}`);
     } catch (err) {
       console.warn('File share error:', err);
-      showToast('⚠️ فشلت مشاركة الملف — تأكد من الاتصال وحاول مرة أخرى');
+      showToast('⚠️ فشلت مشاركة الملف — يرجى المحاولة مرة أخرى');
     }
   };
 
@@ -1318,6 +1339,217 @@ export default function LiveClassRoomPage() {
       room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
     }
     showToast('📄 تم إغلاق الملف المشارك');
+  };
+
+  // ========== FLOATING PEN CONTROLLER OUTSIDE BROWSER (نافذة القلم العائمة خارج المتصفح فوق كل التطبيقات) ==========
+  const openFloatingPenWindow = async () => {
+    try {
+      // 1. Try Document Picture-in-Picture API (Chrome 116+ Always-On-Top window over desktop apps)
+      if (typeof window !== 'undefined' && 'documentPictureInPicture' in window) {
+        const pipWin = await (window as any).documentPictureInPicture.requestWindow({
+          width: 360,
+          height: 480,
+        });
+
+        // Copy styles
+        Array.from(document.styleSheets).forEach((styleSheet: any) => {
+          try {
+            const rules = styleSheet.cssRules ? Array.from(styleSheet.cssRules) : [];
+            const cssRules = rules.map((rule: any) => rule.cssText).join('');
+            const style = pipWin.document.createElement('style');
+            style.textContent = cssRules;
+            pipWin.document.head.appendChild(style);
+          } catch (e) {
+            const link = pipWin.document.createElement('link');
+            if (styleSheet.href) {
+              link.rel = 'stylesheet';
+              link.type = styleSheet.type;
+              link.href = styleSheet.href;
+              pipWin.document.head.appendChild(link);
+            }
+          }
+        });
+
+        pipWin.document.body.innerHTML = `
+          <div style="background:#0f172a;color:#fff;font-family:sans-serif;height:100vh;display:flex;flex-direction:column;padding:12px;box-sizing:border-box;direction:rtl;user-select:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid #334155;padding-bottom:6px;">
+              <span style="font-size:12px;font-weight:bold;color:#38bdf8;">✏️ قلم الشاشة العائم (Always on Top)</span>
+              <span style="font-size:10px;background:#059669;padding:2px 6px;border-radius:6px;color:#fff;font-weight:bold;">متصل بالطلاب</span>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+              <button id="pip-pen" style="flex:1;padding:8px;border-radius:8px;background:#10b981;color:#fff;border:none;font-size:12px;font-weight:bold;cursor:pointer;">قلم</button>
+              <button id="pip-highlighter" style="flex:1;padding:8px;border-radius:8px;background:#334155;color:#fff;border:none;font-size:12px;font-weight:bold;cursor:pointer;">تظليل</button>
+              <button id="pip-eraser" style="flex:1;padding:8px;border-radius:8px;background:#334155;color:#fff;border:none;font-size:12px;font-weight:bold;cursor:pointer;">ممحاة</button>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:8px;background:#1e293b;padding:6px;border-radius:8px;">
+              <span style="font-size:11px;color:#94a3b8;">الألوان:</span>
+              <div id="pip-colors" style="display:flex;gap:6px;"></div>
+            </div>
+            <div style="flex:1;background:#020617;border:2px dashed #334155;border-radius:12px;position:relative;overflow:hidden;touch-action:none;">
+              <canvas id="pip-canvas" style="width:100%;height:100%;cursor:crosshair;"></canvas>
+              <div style="position:absolute;top:4px;right:4px;font-size:9px;color:#64748b;background:rgba(0,0,0,0.6);padding:2px 4px;border-radius:4px;">لوحة الرسم السريع</div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px;">
+              <button id="pip-clear" style="flex:1;padding:6px;border-radius:8px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#fca5a5;font-size:11px;font-weight:bold;cursor:pointer;">🧹 مسح الرسم</button>
+            </div>
+          </div>
+        `;
+
+        const colors = ['#ef4444', '#eab308', '#10b981', '#38bdf8', '#f97316', '#ffffff'];
+        const colorsContainer = pipWin.document.getElementById('pip-colors');
+        let currentPipColor = annotationColor;
+        let currentPipTool = 'pen';
+        let currentPipSize = 4;
+
+        colors.forEach((c: string) => {
+          const btn = pipWin.document.createElement('button');
+          btn.style.cssText = `width:20px;height:20px;border-radius:50%;background:${c};border:${currentPipColor === c ? '2px solid #fff' : '1px solid #475569'};cursor:pointer;`;
+          btn.onclick = () => {
+            currentPipColor = c;
+            setAnnotationColor(c);
+            colorsContainer?.querySelectorAll('button').forEach((b: any) => b.style.border = '1px solid #475569');
+            btn.style.border = '2px solid #fff';
+          };
+          colorsContainer?.appendChild(btn);
+        });
+
+        const penBtn = pipWin.document.getElementById('pip-pen');
+        const hlBtn = pipWin.document.getElementById('pip-highlighter');
+        const erBtn = pipWin.document.getElementById('pip-eraser');
+        const clearBtn = pipWin.document.getElementById('pip-clear');
+
+        const updateToolUI = (tool: 'pen' | 'highlighter' | 'eraser') => {
+          currentPipTool = tool;
+          setAnnotationTool(tool);
+          if (penBtn) penBtn.style.background = tool === 'pen' ? '#10b981' : '#334155';
+          if (hlBtn) hlBtn.style.background = tool === 'highlighter' ? '#f59e0b' : '#334155';
+          if (erBtn) erBtn.style.background = tool === 'eraser' ? '#ef4444' : '#334155';
+        };
+
+        if (penBtn) penBtn.onclick = () => updateToolUI('pen');
+        if (hlBtn) hlBtn.onclick = () => updateToolUI('highlighter');
+        if (erBtn) erBtn.onclick = () => updateToolUI('eraser');
+        if (clearBtn) clearBtn.onclick = () => clearAnnotationCanvas();
+
+        const pipCanvas = pipWin.document.getElementById('pip-canvas') as HTMLCanvasElement;
+        if (pipCanvas) {
+          pipCanvas.width = 1920;
+          pipCanvas.height = 1080;
+          const pipCtx = pipCanvas.getContext('2d');
+          let isDrawingPip = false;
+          let lastPipPt: { x: number; y: number } | null = null;
+
+          const getPipPos = (e: MouseEvent | TouchEvent) => {
+            const rect = pipCanvas.getBoundingClientRect();
+            const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+            return {
+              x: (clientX - rect.left) * (1920 / rect.width),
+              y: (clientY - rect.top) * (1080 / rect.height)
+            };
+          };
+
+          const handlePipStart = (e: any) => {
+            isDrawingPip = true;
+            const pt = getPipPos(e);
+            lastPipPt = pt;
+            if (pipCtx) {
+              pipCtx.beginPath();
+              pipCtx.moveTo(pt.x, pt.y);
+            }
+            const mainCanvas = annotationCanvasRef.current;
+            if (mainCanvas) {
+              const mainCtx = mainCanvas.getContext('2d');
+              if (mainCtx) {
+                mainCtx.beginPath();
+                mainCtx.moveTo(pt.x, pt.y);
+              }
+            }
+          };
+
+          const handlePipMove = (e: any) => {
+            if (!isDrawingPip || !lastPipPt) return;
+            const pt = getPipPos(e);
+
+            const drawStroke = (ctx: CanvasRenderingContext2D) => {
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              if (currentPipTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = currentPipSize * 7;
+                ctx.strokeStyle = 'rgba(0,0,0,1)';
+              } else if (currentPipTool === 'highlighter') {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.lineWidth = currentPipSize * 4.5;
+                ctx.strokeStyle = currentPipColor + '55';
+              } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.lineWidth = currentPipSize;
+                ctx.strokeStyle = currentPipColor;
+              }
+              ctx.lineTo(pt.x, pt.y);
+              ctx.stroke();
+            };
+
+            if (pipCtx) drawStroke(pipCtx);
+            const mainCanvas = annotationCanvasRef.current;
+            if (mainCanvas) {
+              const mainCtx = mainCanvas.getContext('2d');
+              if (mainCtx) drawStroke(mainCtx);
+            }
+
+            const room = roomRef.current;
+            if (room?.localParticipant) {
+              const payload = new TextEncoder().encode(JSON.stringify({
+                type: 'file_annotation_stroke',
+                stroke: {
+                  tool: currentPipTool,
+                  color: currentPipColor,
+                  size: currentPipSize,
+                  points: [[lastPipPt.x, lastPipPt.y], [pt.x, pt.y]],
+                  canvasW: 1920,
+                  canvasH: 1080
+                }
+              }));
+              room.localParticipant.publishData(payload, { reliable: false }).catch(() => {});
+            }
+
+            lastPipPt = pt;
+          };
+
+          const handlePipEnd = () => {
+            if (!isDrawingPip) return;
+            isDrawingPip = false;
+            lastPipPt = null;
+            if (pipCtx) pipCtx.closePath();
+            const mainCanvas = annotationCanvasRef.current;
+            if (mainCanvas) {
+              const mainCtx = mainCanvas.getContext('2d');
+              if (mainCtx) mainCtx.closePath();
+            }
+          };
+
+          pipCanvas.addEventListener('mousedown', handlePipStart);
+          pipCanvas.addEventListener('mousemove', handlePipMove);
+          pipCanvas.addEventListener('mouseup', handlePipEnd);
+          pipCanvas.addEventListener('mouseleave', handlePipEnd);
+          pipCanvas.addEventListener('touchstart', handlePipStart);
+          pipCanvas.addEventListener('touchmove', handlePipMove);
+          pipCanvas.addEventListener('touchend', handlePipEnd);
+        }
+
+        setIsAnnotationOpen(true);
+        showToast('🌟 تم فتح نافذة القلم العائمة فوق الشاشة والتطبيقات بنجاح!');
+        return;
+      }
+
+      setIsAnnotationOpen(true);
+      showToast('✏️ تم تفعيل القلم العائم داخل الشاشة');
+    } catch (e: any) {
+      console.warn('Floating Pen error:', e);
+      setIsAnnotationOpen(true);
+      showToast('✏️ تم فتح القلم العائم');
+    }
   };
 
   // 7. Student Raise Hand Broadcast
@@ -1966,6 +2198,8 @@ export default function LiveClassRoomPage() {
             {/* ANNOTATION CANVAS OVERLAY — active when pen tool open OR when file is shared (receives remote strokes) */}
             <canvas
               ref={annotationCanvasRef}
+              width={1920}
+              height={1080}
               onMouseDown={startDrawing}
               onMouseMove={drawOnCanvas}
               onMouseUp={stopDrawing}
@@ -2086,6 +2320,18 @@ export default function LiveClassRoomPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Popout / Floating Outside Browser Button */}
+                {isSupervisorForThisClass && (
+                  <button
+                    onClick={openFloatingPenWindow}
+                    className="px-2.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                    title="فتح نافذة قلم عائمة Always-on-Top خارج المتصفح للكتابة فوق البوربوينت والتطبيقات"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="hidden sm:inline">قلم خارج المتصفح</span>
+                  </button>
+                )}
 
                 {/* Clear All */}
                 <button

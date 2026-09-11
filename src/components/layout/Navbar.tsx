@@ -149,7 +149,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1">
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 shrink min-w-0">
           {mainNavLinks.map((link) => {
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
 
@@ -163,7 +163,7 @@ export default function Navbar() {
                 >
                   <button
                     onClick={() => setCurriculumDropdown(!curriculumDropdown)}
-                    className={`flex items-center gap-1 px-1.5 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${
+                    className={`flex items-center gap-0.5 xl:gap-1 px-1 xl:px-2 2xl:px-2.5 py-1.5 text-[11px] xl:text-xs 2xl:text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${
                       isActive
                         ? 'text-primary-600 dark:text-gold-400 bg-primary-50 dark:bg-slate-900'
                         : 'text-slate-700 dark:text-slate-200 hover:text-primary-600 dark:hover:text-gold-400 hover:bg-slate-50 dark:hover:bg-slate-900'
@@ -220,7 +220,7 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`px-1.5 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                className={`px-1 xl:px-2 2xl:px-2.5 py-1.5 text-[11px] xl:text-xs 2xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
                   isActive
                     ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#242045]'
                     : 'text-[#2A254D] dark:text-slate-200 hover:text-[#4F5DE4] dark:hover:text-[#aab5f5] hover:bg-[#F1F2FD]/60 dark:hover:bg-[#242045]/60'
@@ -238,7 +238,7 @@ export default function Navbar() {
             onMouseLeave={() => setAboutDropdown(false)}
           >
             <button
-              className={`flex items-center gap-1 px-1.5 xl:px-2.5 py-1.5 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+              className={`flex items-center gap-0.5 xl:gap-1 px-1 xl:px-2 2xl:px-2.5 py-1.5 text-[11px] xl:text-xs 2xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
                 ['/about', '/contact'].includes(pathname)
                   ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#242045]'
                   : 'text-[#2A254D] dark:text-slate-200 hover:text-[#4F5DE4] dark:hover:text-[#aab5f5] hover:bg-[#F1F2FD]/60 dark:hover:bg-[#242045]/60'
