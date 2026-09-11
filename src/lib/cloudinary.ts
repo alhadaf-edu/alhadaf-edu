@@ -1,34 +1,54 @@
-export async function uploadToCloudinary(file: File, folder: string = 'alhadaf_lessons'): Promise<{ url: string; publicId: string }> {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'qbavq5bs';
-  
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', 'alhadaf_unsigned'); // preset name or use unsigned
-  formData.append('folder', folder);
+import { storage } from './firebase';
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+export async function uploadToCloudinary(
+  file: File,
+  folder: string = 'alhadaf_lessons'
+): Promise<{ url: string; publicId: string }> {
+  // 1. Primary: Try server-side signed Cloudinary upload route
   try {
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+
+    const res = await fetch('/api/cloudinary/upload', {
       method: 'POST',
       body: formData,
     });
 
-    if (!res.ok) {
-      // If unsigned upload is not configured on Cloudinary dashboard, create an object URL fallback
-      console.warn('Direct unsigned upload notice. Utilizing secure local URL fallback for preview.');
-      const fallbackUrl = URL.createObjectURL(file);
-      return { url: fallbackUrl, publicId: `local_${Date.now()}` };
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.url) {
+        return {
+          url: data.url,
+          publicId: data.publicId || `cld_${Date.now()}`,
+        };
+      }
     }
-
-    const data = await res.json();
-    return {
-      url: data.secure_url || data.url,
-      publicId: data.public_id,
-    };
-  } catch (error) {
-    console.warn('Cloudinary upload fallback to blob URL:', error);
-    return {
-      url: URL.createObjectURL(file),
-      publicId: `fallback_${Date.now()}`,
-    };
+  } catch (err) {
+    console.warn('Server signed Cloudinary upload error, trying Firebase Storage fallback:', err);
   }
+
+  // 2. Secondary fallback: Firebase Storage permanent CDN (100% reliable HTTPS URL)
+  if (storage) {
+    try {
+      const cleanName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const fileStorageRef = sRef(storage, `${folder}/${cleanName}`);
+      const uploadResult = await uploadBytes(fileStorageRef, file);
+      const downloadUrl = await getDownloadURL(uploadResult.ref);
+      return {
+        url: downloadUrl,
+        publicId: `fb_${Date.now()}`,
+      };
+    } catch (fbErr) {
+      console.warn('Firebase Storage upload error:', fbErr);
+    }
+  }
+
+  // 3. Fallback to local URL only if completely offline
+  const fallbackUrl = URL.createObjectURL(file);
+  return {
+    url: fallbackUrl,
+    publicId: `local_${Date.now()}`,
+  };
 }

@@ -228,6 +228,9 @@ export default function LiveClassRoomPage() {
   const [sharedFile, setSharedFile] = useState<{name: string; type: string; url: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Active Stage Media View Switcher ('whiteboard' | 'file')
+  const [activeStageView, setActiveStageView] = useState<'whiteboard' | 'file'>('whiteboard');
+
   // Recording State (تسجيل الحصة وحفظها على الجهاز)
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -639,10 +642,16 @@ export default function LiveClassRoomPage() {
                 setTimeout(() => { router.push('/live-classes'); }, 1500);
               } else if (data.type === 'whiteboard_open') {
                 setIsWhiteboardActive(true);
+                setActiveStageView('whiteboard');
                 showToast('📋 فتح المشرف السبورة البيضاء التفاعلية');
               } else if (data.type === 'whiteboard_close') {
                 setIsWhiteboardActive(false);
                 showToast('📋 أغلق المشرف السبورة البيضاء');
+              } else if (data.type === 'stage_view_switch') {
+                if (data.view === 'whiteboard' || data.view === 'file') {
+                  setActiveStageView(data.view);
+                  showToast(data.view === 'whiteboard' ? '📋 انتقل المشرف إلى السبورة البيضاء' : '📄 انتقل المشرف إلى الملف المشارك');
+                }
               } else if (data.type === 'whiteboard_stroke') {
                 // Render remote stroke on whiteboard
                 const canvas = whiteboardCanvasRef.current;
@@ -687,6 +696,7 @@ export default function LiveClassRoomPage() {
                 showToast('🧹 مسح المشرف السبورة');
               } else if (data.type === 'file_share') {
                 setSharedFile(data.file);
+                setActiveStageView('file');
                 // Clear any previous annotations when new file is shared
                 const canvas = annotationCanvasRef.current;
                 if (canvas) {
@@ -1183,6 +1193,7 @@ export default function LiveClassRoomPage() {
         if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
       }
     }, 50);
+    setActiveStageView('whiteboard');
     const room = roomRef.current;
     if (room?.localParticipant) {
       const payload = new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_open' }));
@@ -1193,12 +1204,24 @@ export default function LiveClassRoomPage() {
 
   const closeWhiteboard = () => {
     setIsWhiteboardActive(false);
+    if (sharedFile) {
+      setActiveStageView('file');
+    }
     const room = roomRef.current;
     if (room?.localParticipant) {
       const payload = new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_close' }));
       room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
     }
     showToast('📋 تم إغلاق السبورة البيضاء');
+  };
+
+  const switchStageView = (view: 'whiteboard' | 'file') => {
+    setActiveStageView(view);
+    const room = roomRef.current;
+    if (room?.localParticipant) {
+      const payload = new TextEncoder().encode(JSON.stringify({ type: 'stage_view_switch', view }));
+      room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+    }
   };
 
   const startWbDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -1331,6 +1354,7 @@ export default function LiveClassRoomPage() {
 
       const fileInfo = { name: file.name, type: file.type, url: fileUrl };
       setSharedFile(fileInfo);
+      setActiveStageView('file');
 
       // Share URL via DataChannel to all students
       const room = roomRef.current;
@@ -1347,6 +1371,9 @@ export default function LiveClassRoomPage() {
 
   const closeFileShare = () => {
     setSharedFile(null);
+    if (isWhiteboardActive) {
+      setActiveStageView('whiteboard');
+    }
     const room = roomRef.current;
     if (room?.localParticipant) {
       const payload = new TextEncoder().encode(JSON.stringify({ type: 'file_close' }));
@@ -1950,8 +1977,36 @@ export default function LiveClassRoomPage() {
               isStageFull ? 'fixed inset-0 z-[100] rounded-none border-0 p-0 bg-black' : ''
             }`}
           >
-            {/* 0. WHITEBOARD MODE (takes priority) */}
-            {isWhiteboardActive ? (
+            {/* TOP MEDIA TAB SWITCHER (when both Whiteboard and Shared File are open) */}
+            {isWhiteboardActive && sharedFile && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center bg-slate-950/90 border border-slate-700/80 rounded-2xl p-1 shadow-2xl backdrop-blur-xl animate-fade-in">
+                <button
+                  onClick={() => switchStageView('whiteboard')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    activeStageView === 'whiteboard'
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>السبورة البيضاء</span>
+                </button>
+                <button
+                  onClick={() => switchStageView('file')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    activeStageView === 'file'
+                      ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="max-w-[120px] sm:max-w-[200px] truncate">الملف: {sharedFile.name}</span>
+                </button>
+              </div>
+            )}
+
+            {/* 0. WHITEBOARD MODE */}
+            {(isWhiteboardActive && (!sharedFile || activeStageView === 'whiteboard')) ? (
               <div className="relative w-full h-full flex items-center justify-center bg-white rounded-2xl overflow-hidden">
                 <canvas
                   ref={whiteboardCanvasRef}
@@ -1997,7 +2052,7 @@ export default function LiveClassRoomPage() {
                   </div>
                 )}
               </div>
-            ) : sharedFile ? (
+            ) : (sharedFile && (!isWhiteboardActive || activeStageView === 'file')) ? (
               /* FILE VIEWER MODE */
               <div className="relative w-full h-full flex items-center justify-center bg-slate-950 rounded-2xl overflow-hidden">
                 {sharedFile.type.startsWith('image/') ? (

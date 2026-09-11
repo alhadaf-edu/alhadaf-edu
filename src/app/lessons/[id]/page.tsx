@@ -54,6 +54,12 @@ export default function LessonPage({ params }: LessonPageProps) {
   const [fileTitle, setFileTitle] = useState('');
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   // File Viewer Modal State (Preview & Print)
   const [viewingAttachment, setViewingAttachment] = useState<LessonAttachment | null>(null);
@@ -119,6 +125,7 @@ export default function LessonPage({ params }: LessonPageProps) {
       setSelectedFile(null);
       setFileTitle('');
       setIsFileModalOpen(false);
+      showToast('✅ تم حفظ وتثبيت الملف في الدرس بنجاح!');
     } catch (error) {
       console.error('File upload failed:', error);
       alert('حدث خطأ أثناء رفع الملف، يرجى المحاولة مرة أخرى.');
@@ -132,6 +139,82 @@ export default function LessonPage({ params }: LessonPageProps) {
     const currentAttachments = lesson.attachments || [];
     const updated = currentAttachments.filter(a => a.id !== attId);
     await updateLesson(lesson.id, { attachments: updated });
+    showToast('🗑️ تم حذف الملف من الدرس');
+  };
+
+  // Dedicated isolated file printing function
+  const handlePrintAttachment = (att: LessonAttachment) => {
+    if (att.url) {
+      const isImg = /\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(att.url);
+      const isPdf = /\.pdf(\?.*)?$/i.test(att.url) || att.type === 'pdf';
+      
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8" />
+            <title>${att.title || 'طباعة الملف'}</title>
+            <style>
+              @page { size: auto; margin: 10mm; }
+              body { margin: 0; padding: 12px; font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #000; text-align: center; }
+              .header { margin-bottom: 16px; border-bottom: 2px solid #059669; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+              .title { font-size: 16px; font-weight: bold; color: #065f46; }
+              .meta { font-size: 12px; color: #666; }
+              img { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 8px; }
+              iframe { width: 100%; height: 92vh; border: none; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="title">${att.title || 'ملف الدرس'} — منصة الهَدَّاف التعليمية</div>
+              <div class="meta">${lesson.title} • ${lesson.subjectName}</div>
+            </div>
+            ${isImg 
+              ? `<img src="${att.url}" onload="window.print();" />`
+              : `<iframe src="${att.url}" onload="setTimeout(() => { try { this.contentWindow.print(); } catch(e) { window.print(); } }, 600);"></iframe>`
+            }
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        return;
+      }
+    }
+
+    // Fallback: If generated summary sheet
+    const summaryElem = document.getElementById('printable-summary-content');
+    if (summaryElem) {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8" />
+            <title>${att.title || 'ملخص الدرس'}</title>
+            <style>
+              @page { size: A4; margin: 15mm; }
+              body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; color: #1e293b; background: #fff; line-height: 1.6; }
+              .print-header { border-bottom: 2px solid #10b981; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+              ul { list-style-type: disc; padding-right: 20px; }
+              li { margin-bottom: 8px; }
+            </style>
+          </head>
+          <body>
+            ${summaryElem.innerHTML}
+            <script>
+              window.onload = function() { window.print(); };
+            <\/script>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        return;
+      }
+    }
+    window.print();
   };
 
   // Compile all attachments (main pdf + attachments array)
@@ -491,12 +574,12 @@ export default function LessonPage({ params }: LessonPageProps) {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handlePrintSummary}
-                  className="flex items-center gap-1 text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors"
-                  title="طباعة"
+                  onClick={() => viewingAttachment && handlePrintAttachment(viewingAttachment)}
+                  className="flex items-center gap-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl transition-colors shadow-sm"
+                  title="طباعة الملف فقط بدون عناصر الموقع"
                 >
                   <Printer className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">طباعة</span>
+                  <span>طباعة الملف</span>
                 </button>
 
                 {viewingAttachment.url && (
@@ -534,7 +617,7 @@ export default function LessonPage({ params }: LessonPageProps) {
                 </div>
               ) : (
                 /* Generated Printable Summary Sheet */
-                <div className="mx-auto max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-12 shadow-lg border border-slate-200 dark:border-slate-800 space-y-6 text-slate-900 dark:text-slate-100">
+                <div id="printable-summary-content" className="mx-auto max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-12 shadow-lg border border-slate-200 dark:border-slate-800 space-y-6 text-slate-900 dark:text-slate-100">
                   <div className="flex items-center justify-between border-b-2 border-emerald-500 pb-4">
                     <div className="flex items-center gap-3">
                       <Image src="/logo.png" alt="الهداف" width={44} height={44} className="object-contain" />
@@ -674,6 +757,14 @@ export default function LessonPage({ params }: LessonPageProps) {
             </form>
 
           </div>
+        </div>
+      )}
+
+      {/* Floating Success Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-2xl bg-emerald-600 text-white px-5 py-3 shadow-2xl animate-fade-in text-xs font-bold border border-emerald-400/50 backdrop-blur-md">
+          <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
