@@ -56,6 +56,7 @@ export default function LessonPage({ params }: LessonPageProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preloadedDataUrl, setPreloadedDataUrl] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [localAttachments, setLocalAttachments] = useState<LessonAttachment[]>([]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -107,7 +108,7 @@ export default function LessonPage({ params }: LessonPageProps) {
       // Direct fast upload to Cloudinary CDN (permanent HTTPS link for all students)
       const res = await uploadToCloudinary(selectedFile, 'alhadaf_lesson_files');
       if (!res?.url) {
-        throw new Error('تعذر رفع الملف إلى السحابة');
+        throw new Error('تعذر رفع الملف إلى السحابة: لم يتم استرجاع الرابط.');
       }
 
       const finalUrl = res.url;
@@ -121,8 +122,16 @@ export default function LessonPage({ params }: LessonPageProps) {
         uploadedAt: new Date().toISOString().split('T')[0],
       };
 
-      const currentAttachments = lesson.attachments || [];
+      // Always grab latest attachments from live state or local
+      const currentLesson = lessons.find(l => l.id === lesson.id) || lesson;
+      const currentAttachments = [
+        ...(currentLesson.attachments || []),
+        ...localAttachments.filter(la => !(currentLesson.attachments || []).some(a => a.id === la.id || a.url === la.url))
+      ];
       const updatedAttachments = [...currentAttachments, newAttachment];
+
+      // Update local state immediately for instant feedback
+      setLocalAttachments(prev => [...prev, newAttachment]);
 
       await updateLesson(lesson.id, {
         attachments: updatedAttachments,
@@ -133,7 +142,7 @@ export default function LessonPage({ params }: LessonPageProps) {
       setUploadStatus('success');
       showToast('✅ تم رفع وتثبيت الملف في السحابة بنجاح!');
 
-      // Auto-close modal after 2 seconds if user doesn't click OK
+      // Auto-close modal after 2.5 seconds
       setTimeout(() => {
         setIsFileModalOpen(false);
         setUploadStatus('idle');
@@ -143,7 +152,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     } catch (error: any) {
       console.error('File upload failed:', error);
       setUploadStatus('idle');
-      alert(error?.message || 'حدث خطأ أثناء رفع وتثبيت الملف في السحابة، يرجى المحاولة مرة أخرى.');
+      alert(`خطأ في رفع الملف: ${error?.message || 'تعذر الاتصال بالسيرفر'}`);
     }
   };
 
@@ -230,9 +239,10 @@ export default function LessonPage({ params }: LessonPageProps) {
     window.print();
   };
 
-  // Compile all attachments (attachments array + main pdf if distinct)
+  // Compile all attachments (attachments array + local attachments + main pdf if distinct)
   const allAttachments: LessonAttachment[] = [
-    ...(lesson.attachments || [])
+    ...(lesson.attachments || []),
+    ...localAttachments.filter(la => !(lesson.attachments || []).some(a => a.id === la.id || a.url === la.url))
   ];
 
   if (lesson.pdfUrl && !allAttachments.some(a => a.url === lesson.pdfUrl)) {

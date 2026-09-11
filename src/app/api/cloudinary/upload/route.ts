@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     uploadFormData.append('file', file);
     uploadFormData.append('api_key', apiKey);
     uploadFormData.append('timestamp', String(timestamp));
+    uploadFormData.append('folder', folder);
     uploadFormData.append('signature', signature);
     const isImage = file.type?.startsWith('image/') || (file instanceof File && /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name));
     const endpoint = isImage ? 'image/upload' : 'raw/upload';

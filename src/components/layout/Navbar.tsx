@@ -102,7 +102,7 @@ export default function Navbar() {
     { name: 'مكتبة الفيديو', href: '/videos', icon: Video },
     { name: 'بنك الاختبارات', href: '/quizzes', icon: FileQuestion },
     { 
-      name: currentCountry.code === 'sa' ? 'المقالات والتحصيلي' : currentCountry.code === 'eg' ? 'المقالات والثانوية' : 'المقالات والنصائح', 
+      name: 'المقالات', 
       href: '/blog' 
     },
   ];
@@ -149,7 +149,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation with distinct page pills and clear separators */}
-        <nav className="hidden 2xl:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink min-w-0">
+        <nav className="hidden xl:flex items-center gap-1 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink min-w-0">
           {mainNavLinks.map((link, idx) => {
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
 
@@ -164,7 +164,7 @@ export default function Navbar() {
                   >
                     <button
                       onClick={() => setCurriculumDropdown(!curriculumDropdown)}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+                      className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
                         isActive
                           ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
                           : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
@@ -223,7 +223,7 @@ export default function Navbar() {
                 {idx > 0 && <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />}
                 <Link
                   href={link.href}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+                  className={`px-2.5 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
                     isActive
                       ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
                       : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
@@ -244,7 +244,7 @@ export default function Navbar() {
             onMouseLeave={() => setAboutDropdown(false)}
           >
             <button
-              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
                 ['/about', '/contact'].includes(pathname)
                   ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
                   : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
@@ -271,7 +271,7 @@ export default function Navbar() {
         </nav>
 
         {/* Separator between pages and controls */}
-        <div className="hidden 2xl:block h-7 w-px bg-slate-200 dark:bg-slate-800 mx-2 shrink-0" />
+        <div className="hidden xl:block h-7 w-px bg-slate-200 dark:bg-slate-800 mx-2 shrink-0" />
 
         {/* Right-side actions */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -339,14 +339,14 @@ export default function Navbar() {
 
           {/* Responsive Quick Search (Compact icon on laptop / expands on click) */}
           <div className="relative flex items-center" ref={searchRef}>
-            {/* Expanded search popup for screens (< 2xl) */}
+            {/* Expanded search popup for screens (< xl) */}
             {searchOpen && (
               <form 
                 onSubmit={(e) => {
                   handleSearch(e);
                   setSearchOpen(false);
                 }} 
-                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl z-50 flex items-center gap-2 animate-fade-in 2xl:hidden"
+                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl z-50 flex items-center gap-2 animate-fade-in xl:hidden"
               >
                 <input
                   ref={searchInputRef}
@@ -374,7 +374,7 @@ export default function Navbar() {
               </form>
             )}
 
-            {/* Icon only on screens (< 2xl) */}
+            {/* Icon only on screens (< xl) */}
             <button
               type="button"
               onClick={() => {
@@ -382,19 +382,19 @@ export default function Navbar() {
                 setTimeout(() => searchInputRef.current?.focus(), 100);
               }}
               title="بحث في المنصة"
-              className="flex 2xl:hidden h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              className="flex xl:hidden h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
               <Search className="h-3.5 w-3.5" />
             </button>
 
-            {/* Full search input only on wide screens (>= 2xl) */}
-            <form onSubmit={handleSearch} className="hidden 2xl:flex relative items-center">
+            {/* Full search input only on wide screens (>= xl) */}
+            <form onSubmit={handleSearch} className="hidden xl:flex relative items-center">
               <input
                 type="text"
                 placeholder="ابحث عن درس..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-28 2xl:w-36 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 pr-7 pl-2.5 text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:w-40 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all duration-300"
+                className="w-28 xl:w-36 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 pr-7 pl-2.5 text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:w-40 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all duration-300"
               />
               <Search className="absolute right-2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             </form>
@@ -499,7 +499,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex 2xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="القائمة"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -509,7 +509,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="2xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
+        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
           <form onSubmit={handleSearch} className="relative">
             <input
               type="text"
