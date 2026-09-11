@@ -731,6 +731,13 @@ export default function LiveClassRoomPage() {
                 ctx.lineTo(s.points[1][0] * scaleX, s.points[1][1] * scaleY);
                 ctx.stroke();
                 ctx.globalCompositeOperation = 'source-over';
+              } else if (data.type === 'file_annotation_clear') {
+                const canvas = annotationCanvasRef.current;
+                if (canvas) {
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+                showToast('🧹 مسح المشرف كل الرسومات من الشاشة');
               }
             } catch {}
           });
@@ -1099,10 +1106,9 @@ export default function LiveClassRoomPage() {
     ctx.lineTo(x, y);
     ctx.stroke();
 
-    // ── Broadcast annotation strokes to all participants when file is shared ──
-    // (when screen sharing, the broadcast happens via the video stream itself)
+    // ── Broadcast annotation strokes to all participants in real time ──
     const room = roomRef.current;
-    if (sharedFile && room?.localParticipant && lastAnnotationPoint.current && isSupervisorForThisClass) {
+    if (room?.localParticipant && lastAnnotationPoint.current && isSupervisorForThisClass) {
       const payload = new TextEncoder().encode(JSON.stringify({
         type: 'file_annotation_stroke',
         stroke: {
@@ -1110,8 +1116,8 @@ export default function LiveClassRoomPage() {
           color: annotationColor,
           size: annotationSize,
           points: [[lastAnnotationPoint.current.x, lastAnnotationPoint.current.y], [x, y]],
-          canvasW: canvas.width,
-          canvasH: canvas.height,
+          canvasW: canvas.width || 1920,
+          canvasH: canvas.height || 1080,
         }
       }));
       room.localParticipant.publishData(payload, { reliable: false }).catch(() => {});
@@ -1131,12 +1137,19 @@ export default function LiveClassRoomPage() {
 
   const clearAnnotationCanvas = () => {
     const canvas = annotationCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
     }
-    showToast('🧹 تم مسح كل الرسومات والتحديدات');
+    // Broadcast clear event to all students and participants via WebRTC
+    const room = roomRef.current;
+    if (room?.localParticipant && isSupervisorForThisClass) {
+      const payload = new TextEncoder().encode(JSON.stringify({ type: 'file_annotation_clear' }));
+      room.localParticipant.publishData(payload, { reliable: true }).catch(() => {});
+    }
+    showToast('🧹 تم مسح كل الرسومات والتحديدات عند جميع الحاضرين');
   };
 
   // ========== DRAGGABLE TOOLBAR HANDLERS (Pointer Events — works on desktop + mobile) ==========
@@ -2015,18 +2028,44 @@ export default function LiveClassRoomPage() {
                   className="w-full h-full object-contain"
                 />
 
-                {/* Top Bar: Presenter Badge + Stop Button */}
+                {/* Top Bar: Presenter Badge + Pen Button + Stop Button */}
                 <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
                   <div className="flex items-center gap-2 bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-blue-500/40 text-xs font-bold text-blue-300 shadow-xl">
                     <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse inline-block" />
                     <MonitorUp className="w-3.5 h-3.5 text-blue-400" />
                     <span>يشارك: <strong className="text-white">{screenSharePresenter || 'أحد الحاضرين'}</strong></span>
                   </div>
+
+                  {/* Pen & Annotation Toggle Button right next to Stop Button */}
+                  {isSupervisorForThisClass && (
+                    <button
+                      onClick={() => {
+                        const next = !isAnnotationOpen;
+                        setIsAnnotationOpen(next);
+                        if (next && annotationCanvasRef.current) {
+                          const canvas = annotationCanvasRef.current;
+                          canvas.width = 1920;
+                          canvas.height = 1080;
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg border backdrop-blur-md transition-all ${
+                        isAnnotationOpen
+                          ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400/60 shadow-purple-500/30 ring-2 ring-purple-400/40'
+                          : 'bg-slate-900/95 hover:bg-slate-800 text-amber-300 border-amber-500/40 shadow-md'
+                      }`}
+                      title={isAnnotationOpen ? 'إخفاء شريط القلم' : 'تفعيل القلم وأدوات الرسم على الشاشة'}
+                    >
+                      <PenTool className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{isAnnotationOpen ? 'إغلاق القلم' : 'قلم ورسم'}</span>
+                    </button>
+                  )}
+
                   {/* Stop sharing button (only for the presenter) */}
                   {isScreenSharing && (
                     <button
                       onClick={toggleScreenShare}
-                      className="px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg border border-red-500/50 backdrop-blur-md opacity-0 group-hover/stage:opacity-100 transition-opacity"
+                      className="px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg border border-red-500/50 backdrop-blur-md transition-all"
+                      title="إيقاف مشاركة الشاشة"
                     >
                       <X className="w-3.5 h-3.5" />
                       إيقاف
