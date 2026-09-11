@@ -191,9 +191,10 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
 
     if (db) {
       try {
-        await setDoc(doc(db, 'lessons', lessonWithCountry.id), lessonWithCountry);
+        const cleanLesson = JSON.parse(JSON.stringify(lessonWithCountry));
+        await setDoc(doc(db, 'lessons', lessonWithCountry.id), cleanLesson);
       } catch (e) {
-        console.warn('Firestore lesson add fallback:', e);
+        console.error('Firestore lesson add error:', e);
       }
     }
   };
@@ -206,10 +207,11 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
       try {
         const target = updated.find(l => l.id === id);
         if (target) {
-          await setDoc(doc(db, 'lessons', id), target, { merge: true });
+          const cleanTarget = JSON.parse(JSON.stringify(target));
+          await setDoc(doc(db, 'lessons', id), cleanTarget, { merge: true });
         }
       } catch (e) {
-        console.warn('Firestore lesson update fallback:', e);
+        console.error('Firestore lesson update error:', e);
       }
     }
   };
@@ -222,7 +224,7 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
       try {
         await deleteDoc(doc(db, 'lessons', id));
       } catch (e) {
-        console.warn('Firestore lesson delete fallback:', e);
+        console.error('Firestore lesson delete error:', e);
       }
     }
   };
@@ -238,9 +240,10 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
 
     if (db) {
       try {
-        await setDoc(doc(db, 'quizzes', quizWithCountry.id), quizWithCountry);
+        const cleanQuiz = JSON.parse(JSON.stringify(quizWithCountry));
+        await setDoc(doc(db, 'quizzes', quizWithCountry.id), cleanQuiz);
       } catch (e) {
-        console.warn('Firestore quiz add fallback:', e);
+        console.error('Firestore quiz add error:', e);
       }
     }
 
