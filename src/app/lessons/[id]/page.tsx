@@ -222,23 +222,28 @@ export default function LessonPage({ params }: LessonPageProps) {
     window.print();
   };
 
-  // Compile all attachments (main pdf + attachments array)
+  // Compile all attachments (attachments array + main pdf if distinct)
   const allAttachments: LessonAttachment[] = [
-    ...(lesson.pdfUrl ? [{
+    ...(lesson.attachments || [])
+  ];
+
+  if (lesson.pdfUrl && !allAttachments.some(a => a.url === lesson.pdfUrl)) {
+    allAttachments.unshift({
       id: 'main_pdf',
       title: lesson.pdfTitle || `ملخص ومذكرة درس ${lesson.title}.pdf`,
       url: lesson.pdfUrl,
       size: '2.4 MB',
       type: 'pdf' as const,
-    }] : (lesson.summaryNotes && lesson.summaryNotes.length > 0 ? [{
+    });
+  } else if (allAttachments.length === 0 && lesson.summaryNotes && lesson.summaryNotes.length > 0) {
+    allAttachments.push({
       id: 'generated_summary',
       title: `ملخص وأوراق عمل ${lesson.title}.pdf`,
       url: '',
       size: '1.8 MB',
       type: 'pdf' as const,
-    }] : [])),
-    ...(lesson.attachments || [])
-  ];
+    });
+  }
 
   // Download Trigger Handler
   const handleDownloadFile = async (att: LessonAttachment) => {

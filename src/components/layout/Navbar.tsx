@@ -148,88 +148,94 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden 2xl:flex items-center gap-1.5 shrink min-w-0">
-          {mainNavLinks.map((link) => {
+        {/* Desktop Navigation with distinct page pills and clear separators */}
+        <nav className="hidden xl:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink min-w-0">
+          {mainNavLinks.map((link, idx) => {
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
 
             if (link.hasDropdown) {
               return (
-                <div 
-                  key={link.name} 
-                  className="relative"
-                  onMouseEnter={() => setCurriculumDropdown(true)}
-                  onMouseLeave={() => setCurriculumDropdown(false)}
-                >
-                  <button
-                    onClick={() => setCurriculumDropdown(!curriculumDropdown)}
-                    className={`flex items-center gap-0.5 xl:gap-1 px-1 xl:px-2 2xl:px-2.5 py-1.5 text-[11px] xl:text-xs 2xl:text-sm font-bold rounded-xl transition-colors whitespace-nowrap ${
-                      isActive
-                        ? 'text-primary-600 dark:text-gold-400 bg-primary-50 dark:bg-slate-900'
-                        : 'text-slate-700 dark:text-slate-200 hover:text-primary-600 dark:hover:text-gold-400 hover:bg-slate-50 dark:hover:bg-slate-900'
-                    }`}
+                <React.Fragment key={link.name}>
+                  {idx > 0 && <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />}
+                  <div 
+                    className="relative"
+                    onMouseEnter={() => setCurriculumDropdown(true)}
+                    onMouseLeave={() => setCurriculumDropdown(false)}
                   >
-                    <span>{link.name}</span>
-                    <ChevronDown className={`h-3 w-3 xl:h-3.5 xl:w-3.5 transition-transform duration-200 ${curriculumDropdown ? 'rotate-180' : ''}`} />
-                  </button>
+                    <button
+                      onClick={() => setCurriculumDropdown(!curriculumDropdown)}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+                        isActive
+                          ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
+                          : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                      }`}
+                    >
+                      <span>{link.name}</span>
+                      <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${curriculumDropdown ? 'rotate-180' : ''}`} />
+                    </button>
 
-                  {curriculumDropdown && (
-                    <div className="absolute top-full right-0 w-72 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-2xl animate-fade-in z-50">
-                      <div className="text-[10px] font-bold text-slate-400 px-2 py-1 mb-1 uppercase tracking-wider">
-                        {isAdmin ? 'كافة المراحل الدراسية' : `مراحل ${currentCountry.flag} ${currentCountry.name.replace('المملكة العربية ', '').replace('جمهورية ', '')}`}
-                      </div>
-                      {stages.map((stage) => (
-                        <div key={stage.id} className="mb-1 last:mb-0">
+                    {curriculumDropdown && (
+                      <div className="absolute top-full right-0 w-72 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-2xl animate-fade-in z-50">
+                        <div className="text-[10px] font-bold text-slate-400 px-2 py-1 mb-1 uppercase tracking-wider">
+                          {isAdmin ? 'كافة المراحل الدراسية' : `مراحل ${currentCountry.flag} ${currentCountry.name.replace('المملكة العربية ', '').replace('جمهورية ', '')}`}
+                        </div>
+                        {stages.map((stage) => (
+                          <div key={stage.id} className="mb-1 last:mb-0">
+                            <Link
+                              href={`/curriculum?stage=${stage.id}`}
+                              className="flex items-center justify-between rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group/item"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-50 dark:bg-slate-800 text-primary-600 dark:text-gold-400">
+                                  <GraduationCap className="h-3.5 w-3.5" />
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover/item:text-primary-600 dark:group-hover/item:text-gold-400">
+                                    {stage.name}
+                                  </h4>
+                                  <span className="text-[10px] text-slate-400">
+                                    {stage.gradesCount} صفوف دراسية
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-slate-400 text-xs">←</span>
+                            </Link>
+                          </div>
+                        ))}
+                        <div className="mt-2 border-t border-slate-100 dark:border-slate-800 pt-2">
                           <Link
-                            href={`/curriculum?stage=${stage.id}`}
-                            className="flex items-center justify-between rounded-xl p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group/item"
+                            href="/curriculum"
+                            className="flex items-center justify-center gap-1 text-xs font-bold text-primary-600 dark:text-gold-400 py-1.5 hover:underline"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-50 dark:bg-slate-800 text-primary-600 dark:text-gold-400">
-                                <GraduationCap className="h-3.5 w-3.5" />
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover/item:text-primary-600 dark:group-hover/item:text-gold-400">
-                                  {stage.name}
-                                </h4>
-                                <span className="text-[10px] text-slate-400">
-                                  {stage.gradesCount} صفوف دراسية
-                                </span>
-                              </div>
-                            </div>
-                            <span className="text-slate-400 text-xs">←</span>
+                            <span>عرض دليل المناهج بالكامل</span>
+                            <span>←</span>
                           </Link>
                         </div>
-                      ))}
-                      <div className="mt-2 border-t border-slate-100 dark:border-slate-800 pt-2">
-                        <Link
-                          href="/curriculum"
-                          className="flex items-center justify-center gap-1 text-xs font-bold text-primary-600 dark:text-gold-400 py-1.5 hover:underline"
-                        >
-                          <span>عرض دليل المناهج بالكامل</span>
-                          <span>←</span>
-                        </Link>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                </React.Fragment>
               );
             }
 
             return (
-              <Link
-                key={link.name}
-                href={link.href}
-                className={`px-1 xl:px-2 2xl:px-2.5 py-1.5 text-[11px] xl:text-xs 2xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#242045]'
-                    : 'text-[#2A254D] dark:text-slate-200 hover:text-[#4F5DE4] dark:hover:text-[#aab5f5] hover:bg-[#F1F2FD]/60 dark:hover:bg-[#242045]/60'
-                }`}
-              >
-                {link.name}
-              </Link>
+              <React.Fragment key={link.name}>
+                {idx > 0 && <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />}
+                <Link
+                  href={link.href}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+                    isActive
+                      ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
+                      : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              </React.Fragment>
             );
           })}
+
+          <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />
 
           {/* "عن المنصة" dropdown */}
           <div
@@ -238,14 +244,14 @@ export default function Navbar() {
             onMouseLeave={() => setAboutDropdown(false)}
           >
             <button
-              className={`flex items-center gap-0.5 xl:gap-1 px-1 xl:px-2 2xl:px-2.5 py-1.5 text-[11px] xl:text-xs 2xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
                 ['/about', '/contact'].includes(pathname)
-                  ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#242045]'
-                  : 'text-[#2A254D] dark:text-slate-200 hover:text-[#4F5DE4] dark:hover:text-[#aab5f5] hover:bg-[#F1F2FD]/60 dark:hover:bg-[#242045]/60'
+                  ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
+                  : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
               }`}
             >
               <span>عن المنصة</span>
-              <ChevronDown className={`h-3 w-3 xl:h-3.5 xl:w-3.5 transition-transform duration-200 ${aboutDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${aboutDropdown ? 'rotate-180' : ''}`} />
             </button>
             {aboutDropdown && (
               <div className="absolute top-full right-0 w-48 rounded-2xl border border-[#E0E3FD] dark:border-[#373261] bg-white dark:bg-[#242045] p-2 shadow-xl animate-fade-in z-50">
@@ -263,6 +269,9 @@ export default function Navbar() {
             )}
           </div>
         </nav>
+
+        {/* Separator between pages and controls */}
+        <div className="hidden xl:block h-7 w-px bg-slate-200 dark:bg-slate-800 mx-2 shrink-0" />
 
         {/* Right-side actions */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -490,7 +499,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex 2xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="القائمة"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -500,7 +509,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="2xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
+        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
           <form onSubmit={handleSearch} className="relative">
             <input
               type="text"

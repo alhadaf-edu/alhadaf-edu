@@ -39,10 +39,18 @@ export async function uploadToCloudinary(
       formData.append('signature', signature);
     }
 
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
+    let res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
       method: 'POST',
       body: formData,
     });
+
+    // If image/upload rejected the file (e.g. non-standard format), raw/upload always accepts it!
+    if (!res.ok && resourceType === 'image') {
+      res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+    }
 
     if (res.ok) {
       const data = await res.json();
@@ -80,11 +88,5 @@ export async function uploadToCloudinary(
     console.warn('Server upload fallback error:', sErr);
   }
 
-  // 3. Fallback to Data URL
-  return new Promise<{ url: string; publicId: string }>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({ url: reader.result as string, publicId: `data_${Date.now()}` });
-    reader.onerror = () => resolve({ url: URL.createObjectURL(file), publicId: `local_${Date.now()}` });
-    reader.readAsDataURL(file);
-  });
+  throw new Error('تعذر رفع وتثبيت الملف في السحابة. يرجى التحقق من اتصال الإنترنت.');
 }

@@ -200,16 +200,25 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateLesson = async (id: string, updatedFields: Partial<Lesson>) => {
-    const updated = lessons.map(l => l.id === id ? { ...l, ...updatedFields } : l);
+    let existing = lessons.find(l => l.id === id);
+    if (!existing) {
+      existing = INITIAL_LESSONS.find(l => l.id === id);
+    }
+
+    const mergedLesson: Lesson = existing
+      ? { ...existing, ...updatedFields }
+      : ({ id, ...updatedFields } as Lesson);
+
+    const updated = [
+      mergedLesson,
+      ...lessons.filter(l => l.id !== id)
+    ];
     await persistLessons(updated);
 
     if (db) {
       try {
-        const target = updated.find(l => l.id === id);
-        if (target) {
-          const cleanTarget = JSON.parse(JSON.stringify(target));
-          await setDoc(doc(db, 'lessons', id), cleanTarget, { merge: true });
-        }
+        const cleanTarget = JSON.parse(JSON.stringify(mergedLesson));
+        await setDoc(doc(db, 'lessons', id), cleanTarget, { merge: true });
       } catch (e) {
         console.error('Firestore lesson update error:', e);
       }

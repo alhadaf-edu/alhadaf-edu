@@ -26,9 +26,10 @@ export async function POST(req: NextRequest) {
     uploadFormData.append('api_key', apiKey);
     uploadFormData.append('timestamp', String(timestamp));
     uploadFormData.append('signature', signature);
-    uploadFormData.append('folder', folder);
+    const isImage = file.type?.startsWith('image/') || (file instanceof File && /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name));
+    const endpoint = isImage ? 'image/upload' : 'raw/upload';
 
-    const cRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+    const cRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${endpoint}`, {
       method: 'POST',
       body: uploadFormData,
     });
