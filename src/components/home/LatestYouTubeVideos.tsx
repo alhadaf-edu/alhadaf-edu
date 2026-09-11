@@ -4,17 +4,43 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { YouTubeVideo } from '@/types';
 import { Youtube, Play, ExternalLink, Calendar, X } from 'lucide-react';
+import { useLessons } from '@/context/LessonsContext';
 
 interface LatestYouTubeVideosProps {
   videos: YouTubeVideo[];
 }
 
 export default function LatestYouTubeVideos({ videos }: LatestYouTubeVideosProps) {
+  const { lessons } = useLessons();
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
-  const activeVideo = videos.find((v) => v.id === activeVideoId);
+  // Extract videos from synced lessons to ensure newly synced videos show immediately
+  const syncedVideos: YouTubeVideo[] = lessons
+    .filter(l => l.youtubeId)
+    .map(l => ({
+      id: l.youtubeId!,
+      title: l.title,
+      description: l.description,
+      thumbnailUrl: l.thumbnailUrl || `https://i.ytimg.com/vi/${l.youtubeId}/hqdefault.jpg`,
+      publishedAt: l.createdAt || new Date().toISOString(),
+      duration: l.duration || '18:00',
+      viewCount: `${l.viewsCount || 1200}`,
+    }));
 
-  if (videos.length === 0) return null;
+  // Combine synced videos first, then server fallback videos without duplicates
+  const seenIds = new Set<string>();
+  const allVideos: YouTubeVideo[] = [];
+
+  for (const v of [...syncedVideos, ...videos]) {
+    if (v.id && !seenIds.has(v.id)) {
+      seenIds.add(v.id);
+      allVideos.push(v);
+    }
+  }
+
+  const activeVideo = allVideos.find((v) => v.id === activeVideoId);
+
+  if (allVideos.length === 0) return null;
 
   return (
     <section className="py-16 sm:py-24">
@@ -48,7 +74,7 @@ export default function LatestYouTubeVideos({ videos }: LatestYouTubeVideosProps
 
         {/* Videos Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.slice(0, 6).map((video) => (
+          {allVideos.slice(0, 6).map((video) => (
             <div
               key={video.id}
               className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
