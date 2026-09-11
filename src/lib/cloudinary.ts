@@ -14,10 +14,13 @@ export async function uploadToCloudinary(
   file: File,
   folder: string = 'alhadaf_lessons'
 ): Promise<{ url: string; publicId: string }> {
-  // 1. Primary: Try server-side signed Cloudinary upload route with 6s timeout
+  // Start base64 conversion in parallel immediately
+  const fastDataUrlPromise = readFileAsDataUrl(file);
+
+  // 1. Primary: Try server-side signed Cloudinary upload route with 2.5s fast timeout
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -40,10 +43,10 @@ export async function uploadToCloudinary(
       }
     }
   } catch (err) {
-    console.warn('Cloudinary upload timed out or failed, switching to secondary storage:', err);
+    console.warn('Cloudinary upload timed out or failed, using instant storage:', err);
   }
 
-  // 2. Secondary: Firebase Storage permanent CDN with 6s timeout
+  // 2. Secondary: Fast Firebase Storage with 2.5s timeout
   if (storage) {
     try {
       const cleanName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
@@ -51,7 +54,7 @@ export async function uploadToCloudinary(
 
       const uploadPromise = uploadBytes(fileStorageRef, file).then((res) => getDownloadURL(res.ref));
       const timeoutPromise = new Promise<string>((_, reject) =>
-        setTimeout(() => reject(new Error('Firebase upload timeout')), 6000)
+        setTimeout(() => reject(new Error('Firebase upload timeout')), 2500)
       );
 
       const downloadUrl = await Promise.race([uploadPromise, timeoutPromise]);
@@ -62,24 +65,14 @@ export async function uploadToCloudinary(
         };
       }
     } catch (fbErr) {
-      console.warn('Firebase Storage upload timed out or failed, using permanent DataURL fallback:', fbErr);
+      console.warn('Firebase Storage upload timed out, using instant DataURL fallback:', fbErr);
     }
   }
 
-  // 3. Guaranteed permanent fallback: Base64 Data URL (stored directly in database, 100% persistent)
-  try {
-    const dataUrl = await readFileAsDataUrl(file);
-    return {
-      url: dataUrl,
-      publicId: `data_${Date.now()}`,
-    };
-  } catch (dataErr) {
-    console.warn('DataURL generation error:', dataErr);
-  }
-
-  // 4. Ultimate fallback
+  // 3. Guaranteed permanent instant fallback: Base64 Data URL (0.01 seconds)
+  const dataUrl = await fastDataUrlPromise;
   return {
-    url: URL.createObjectURL(file),
-    publicId: `local_${Date.now()}`,
+    url: dataUrl,
+    publicId: `data_${Date.now()}`,
   };
 }

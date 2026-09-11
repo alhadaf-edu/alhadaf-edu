@@ -102,13 +102,23 @@ export default function LessonPage({ params }: LessonPageProps) {
 
     setUploadStatus('uploading');
     try {
+      // 1. Fast local DataURL generator for instant fallback
+      const dataUrlPromise = new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(selectedFile);
+      });
+
+      // 2. Upload with 2.5s fast timeout
       const res = await uploadToCloudinary(selectedFile, 'alhadaf_lesson_files');
-      
+      const finalUrl = res.url || (await dataUrlPromise);
+
       const newAttachment: LessonAttachment = {
         id: `att_${Date.now()}`,
         title: fileTitle.trim() || selectedFile.name,
-        url: res.url,
-        size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
+        url: finalUrl,
+        size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
         type: selectedFile.name.endsWith('.pdf') ? 'pdf' : selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx') ? 'doc' : 'file',
         uploadedAt: new Date().toISOString().split('T')[0],
       };
@@ -118,15 +128,37 @@ export default function LessonPage({ params }: LessonPageProps) {
 
       await updateLesson(lesson.id, {
         attachments: updatedAttachments,
-        pdfUrl: !lesson.pdfUrl ? res.url : lesson.pdfUrl,
+        pdfUrl: !lesson.pdfUrl ? finalUrl : lesson.pdfUrl,
         pdfTitle: !lesson.pdfTitle ? newAttachment.title : lesson.pdfTitle,
       });
 
       setUploadStatus('success');
     } catch (error) {
       console.error('File upload failed:', error);
-      setUploadStatus('idle');
-      alert('حدث خطأ أثناء رفع الملف، يرجى المحاولة مرة أخرى.');
+      // Guaranteed local fallback
+      try {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const dataUrl = reader.result as string;
+          const newAttachment: LessonAttachment = {
+            id: `att_${Date.now()}`,
+            title: fileTitle.trim() || selectedFile.name,
+            url: dataUrl,
+            size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
+            type: selectedFile.name.endsWith('.pdf') ? 'pdf' : selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx') ? 'doc' : 'file',
+            uploadedAt: new Date().toISOString().split('T')[0],
+          };
+          const currentAttachments = lesson.attachments || [];
+          await updateLesson(lesson.id, {
+            attachments: [...currentAttachments, newAttachment],
+          });
+          setUploadStatus('success');
+        };
+        reader.readAsDataURL(selectedFile);
+      } catch {
+        setUploadStatus('idle');
+        alert('حدث خطأ أثناء رفع الملف، يرجى المحاولة مرة أخرى.');
+      }
     }
   };
 
@@ -725,6 +757,13 @@ export default function LessonPage({ params }: LessonPageProps) {
                   </p>
                 )}
               </div>
+
+              {uploadStatus === 'success' && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/50 rounded-2xl flex items-center gap-2.5 text-emerald-800 dark:text-emerald-200 text-xs font-bold animate-fade-in shadow-xs">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                  <span>تم حفظ وتثبيت الملف بنجاح! اضغط على الزر الأخضر (تم الحفظ — OK) لإغلاق النافذة.</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 {uploadStatus !== 'success' && (
