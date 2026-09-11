@@ -149,7 +149,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation with distinct page pills and clear separators */}
-        <nav className="hidden xl:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink min-w-0">
+        <nav className="hidden 2xl:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink min-w-0">
           {mainNavLinks.map((link, idx) => {
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
 
@@ -271,7 +271,7 @@ export default function Navbar() {
         </nav>
 
         {/* Separator between pages and controls */}
-        <div className="hidden xl:block h-7 w-px bg-slate-200 dark:bg-slate-800 mx-2 shrink-0" />
+        <div className="hidden 2xl:block h-7 w-px bg-slate-200 dark:bg-slate-800 mx-2 shrink-0" />
 
         {/* Right-side actions */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -287,7 +287,7 @@ export default function Navbar() {
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
                 >
                   <span className="text-base leading-none">{currentCountry.flag}</span>
-                  <span className="hidden xl:inline max-w-[80px] truncate">
+                  <span className="hidden 2xl:inline max-w-[80px] truncate">
                     {currentCountry.name.replace('المملكة العربية ', '').replace('جمهورية ', '').replace(' الأردنية الهاشمية', '').replace(' العربية المتحدة', '')}
                   </span>
                   <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${countryDropdown ? 'rotate-180' : ''}`} />
@@ -499,7 +499,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex 2xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="القائمة"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -509,7 +509,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
+        <div className="2xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
           <form onSubmit={handleSearch} className="relative">
             <input
               type="text"

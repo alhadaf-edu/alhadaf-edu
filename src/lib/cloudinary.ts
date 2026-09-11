@@ -25,47 +25,7 @@ export async function uploadToCloudinary(
   const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name || '');
   const resourceType = isImage ? 'image' : 'raw';
 
-  // 1. Direct browser-to-Cloudinary upload (Ultra fast ~1s, permanent HTTPS CDN for all students)
-  try {
-    const strToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
-    const signature = await getSha1Signature(strToSign);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('api_key', apiKey);
-    formData.append('timestamp', String(timestamp));
-    formData.append('folder', folder);
-    if (signature) {
-      formData.append('signature', signature);
-    }
-
-    let res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    // If image/upload rejected the file (e.g. non-standard format), raw/upload always accepts it!
-    if (!res.ok && resourceType === 'image') {
-      res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-    }
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.secure_url || data?.url) {
-        return {
-          url: data.secure_url || data.url,
-          publicId: data.public_id || `cld_${Date.now()}`,
-        };
-      }
-    }
-  } catch (cErr) {
-    console.warn('Direct Cloudinary upload error, trying server fallback:', cErr);
-  }
-
-  // 2. Server-side signed upload route fallback
+  // 1. First choice: Same-origin Server API route (immune to CORS, client crypto issues, and ISP blocks)
   try {
     const sFormData = new FormData();
     sFormData.append('file', file);
@@ -85,7 +45,46 @@ export async function uploadToCloudinary(
       }
     }
   } catch (sErr) {
-    console.warn('Server upload fallback error:', sErr);
+    console.warn('Server upload route note, trying direct upload:', sErr);
+  }
+
+  // 2. Direct browser-to-Cloudinary upload fallback
+  try {
+    const strToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+    const signature = await getSha1Signature(strToSign);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('folder', folder);
+    if (signature) {
+      formData.append('signature', signature);
+    }
+
+    let res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok && resourceType === 'image') {
+      res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+    }
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.secure_url || data?.url) {
+        return {
+          url: data.secure_url || data.url,
+          publicId: data.public_id || `cld_${Date.now()}`,
+        };
+      }
+    }
+  } catch (cErr) {
+    console.warn('Direct Cloudinary upload error:', cErr);
   }
 
   throw new Error('تعذر رفع وتثبيت الملف في السحابة. يرجى التحقق من اتصال الإنترنت.');

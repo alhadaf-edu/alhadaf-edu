@@ -29,10 +29,18 @@ export async function POST(req: NextRequest) {
     const isImage = file.type?.startsWith('image/') || (file instanceof File && /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name));
     const endpoint = isImage ? 'image/upload' : 'raw/upload';
 
-    const cRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${endpoint}`, {
+    let cRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${endpoint}`, {
       method: 'POST',
       body: uploadFormData,
     });
+
+    // If image/upload fails (e.g. non-standard format), raw/upload always accepts any file
+    if (!cRes.ok && endpoint === 'image/upload') {
+      cRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
+        method: 'POST',
+        body: uploadFormData,
+      });
+    }
 
     if (!cRes.ok) {
       const errText = await cRes.text();

@@ -131,11 +131,19 @@ export default function LessonPage({ params }: LessonPageProps) {
       });
 
       setUploadStatus('success');
-      showToast('✅ تم رفع وتثبيت الملف في السحابة لجميع الطلاب!');
-    } catch (error) {
+      showToast('✅ تم رفع وتثبيت الملف في السحابة بنجاح!');
+
+      // Auto-close modal after 2 seconds if user doesn't click OK
+      setTimeout(() => {
+        setIsFileModalOpen(false);
+        setUploadStatus('idle');
+        setSelectedFile(null);
+        setFileTitle('');
+      }, 2500);
+    } catch (error: any) {
       console.error('File upload failed:', error);
       setUploadStatus('idle');
-      alert('حدث خطأ أثناء رفع وتثبيت الملف في السحابة، يرجى المحاولة مرة أخرى.');
+      alert(error?.message || 'حدث خطأ أثناء رفع وتثبيت الملف في السحابة، يرجى المحاولة مرة أخرى.');
     }
   };
 
