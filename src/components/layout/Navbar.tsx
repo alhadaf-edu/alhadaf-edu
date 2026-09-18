@@ -439,15 +439,15 @@ export default function Navbar() {
             <div className="relative shrink-0">
               <button
                 onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center gap-1 rounded-xl border border-[#E0E3FD] dark:border-[#373261] bg-[#F1F2FD] dark:bg-[#242045] p-1 pr-1.5 text-xs font-bold text-[#2A254D] dark:text-slate-200 hover:bg-[#E0E3FD]/60 dark:hover:bg-[#1A1736] transition-colors shrink-0"
+                className="flex items-center gap-1.5 rounded-xl border border-[#E0E3FD] dark:border-[#373261] bg-[#F1F2FD] dark:bg-[#242045] p-1.5 pr-2.5 text-xs font-bold text-[#2A254D] dark:text-slate-200 hover:bg-[#E0E3FD]/60 dark:hover:bg-[#1A1736] transition-colors shrink-0"
               >
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4F5DE4] text-white text-[11px] font-bold">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#4F5DE4] text-white text-xs font-black shadow-sm">
                   {profile?.displayName?.charAt(0) || 'ط'}
                 </div>
-                <span className="max-w-[50px] sm:max-w-[75px] truncate hidden sm:inline text-[11px] sm:text-xs">
+                <span className="max-w-[70px] sm:max-w-[90px] truncate hidden sm:inline text-xs font-bold">
                   {profile?.displayName || 'حسابي'}
                 </span>
-                <ChevronDown className="h-3 w-3 text-slate-400" />
+                <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
               </button>
 
               {userDropdown && (
@@ -500,13 +500,21 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <Link
-              href="/auth/login"
-              className="flex items-center gap-1.5 rounded-xl bg-[#F57005] hover:bg-[#ea580c] text-white font-bold px-3.5 sm:px-5 py-2 text-xs shadow-md shadow-[#F57005]/20 hover:shadow-lg transition-all duration-200 whitespace-nowrap"
-            >
-              <UserIcon className="h-3.5 w-3.5" />
-              <span>دخول / تسجيل</span>
-            </Link>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Link
+                href="/auth/login"
+                className="hidden sm:inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#2A254D] dark:text-slate-200 font-bold px-3 py-2 text-xs transition-colors shadow-xs"
+              >
+                <span>تسجيل دخول</span>
+              </Link>
+              <Link
+                href="/auth/register"
+                className="flex items-center gap-1.5 rounded-xl bg-[#F57005] hover:bg-[#ea580c] text-white font-bold px-3.5 sm:px-4 py-2 text-xs shadow-md shadow-[#F57005]/20 hover:shadow-lg transition-all duration-200 whitespace-nowrap"
+              >
+                <UserIcon className="h-3.5 w-3.5" />
+                <span>إنشاء حساب</span>
+              </Link>
+            </div>
           )}
 
           {/* Mobile Menu Button */}
