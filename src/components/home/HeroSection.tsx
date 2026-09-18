@@ -66,8 +66,11 @@ export default function HeroSection() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-heading tracking-tight leading-[1.25] text-white">
-              الهداف التعليمي — طريقك نحو <span className="text-transparent bg-clip-text bg-gradient-to-l from-[#F57005] via-[#fb923c] to-[#fde68a]">القمة والدرجات الكاملة</span>
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black font-heading text-white leading-normal sm:leading-snug lg:leading-tight">
+              <span>الهَدَّاف التعليمي — طريقك نحو</span>
+              <span className="block mt-1 sm:mt-2 text-transparent bg-clip-text bg-gradient-to-l from-[#F57005] via-[#fb923c] to-[#fde68a]">
+                القمة والدرجات الكاملة
+              </span>
             </h1>
 
             {/* Description */}
