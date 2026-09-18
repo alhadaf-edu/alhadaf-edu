@@ -155,19 +155,15 @@ export default function Navbar() {
               className="object-contain"
             />
           </div>
-          <div className="hidden xs:flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5">
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1 sm:gap-1.5">
               <span className="text-base sm:text-lg xl:text-xl font-black tracking-tight text-[#2A254D] dark:text-white font-heading whitespace-nowrap">
                 الهَدَّاف
               </span>
-              <span className="hidden xl:inline-flex rounded-md bg-[#4F5DE4]/10 text-[#4F5DE4] dark:bg-[#4F5DE4]/20 dark:text-[#aab5f5] px-1.5 py-0.5 text-[9px] font-black border border-[#4F5DE4]/20">
               <span className="inline-flex rounded-md bg-[#4F5DE4]/10 text-[#4F5DE4] dark:bg-[#4F5DE4]/20 dark:text-[#aab5f5] px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black border border-[#4F5DE4]/20 whitespace-nowrap">
                 التعليمي
               </span>
             </div>
-            <span className="hidden 2xl:flex items-center gap-1 text-[9px] font-semibold text-[#697585] dark:text-[#B3ADE1] leading-tight">
             <span className="hidden sm:flex items-center gap-1 text-[9px] font-semibold text-[#697585] dark:text-[#B3ADE1] leading-tight mt-0.5">
               <span>{currentCountry.flag}</span>
               <span>مناهج {countryName}</span>
