@@ -221,6 +221,7 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
         await setDoc(doc(db, 'lessons', id), cleanTarget, { merge: true });
       } catch (e) {
         console.error('Firestore lesson update error:', e);
+        // Don't throw — localStorage save above already succeeded as fallback
       }
     }
   };

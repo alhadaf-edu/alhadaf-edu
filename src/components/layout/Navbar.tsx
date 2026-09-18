@@ -23,6 +23,7 @@ import {
   Info,
   Phone,
   Radio,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -38,13 +39,10 @@ export default function Navbar() {
 
   const canAccessAdmin = isAdmin || isModerator;
 
-  // Don't render general navbar inside an active live virtual classroom
-  const isInsideLiveRoom = pathname?.startsWith('/live-classes/') && pathname !== '/live-classes';
-  if (isInsideLiveRoom) return null;
-
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [curriculumDropdown, setCurriculumDropdown] = useState(false);
   const [aboutDropdown, setAboutDropdown] = useState(false);
+  const [moreDropdown, setMoreDropdown] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
   const [countryDropdown, setCountryDropdown] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -65,6 +63,7 @@ export default function Navbar() {
     setMobileMenuOpen(false);
     setCurriculumDropdown(false);
     setAboutDropdown(false);
+    setMoreDropdown(false);
     setUserDropdown(false);
     setCountryDropdown(false);
     setSearchOpen(false);
@@ -100,12 +99,14 @@ export default function Navbar() {
     { name: 'المناهج الدراسية', href: '/curriculum', hasDropdown: true },
     { name: 'الحصص المباشرة', href: '/live-classes', icon: Radio, highlight: true },
     { name: 'مكتبة الفيديو', href: '/videos', icon: Video },
+  ];
+
+  // Items grouped under "المزيد" dropdown in desktop nav
+  const moreLinks = [
     { name: 'بنك الاختبارات', href: '/quizzes', icon: FileQuestion },
-    { 
-      name: 'المقالات', 
-      href: '/blog',
-      icon: BookOpen,
-    },
+    { name: 'المقالات', href: '/blog', icon: BookOpen },
+    { name: 'من نحن', href: '/about', icon: Info },
+    { name: 'تواصل معنا', href: '/contact', icon: Phone },
   ];
 
   const aboutLinks = [
@@ -119,30 +120,30 @@ export default function Navbar() {
         ? 'bg-white/95 dark:bg-[#1A1736]/95 shadow-tiqdr backdrop-blur-md border-b border-[#E0E3FD]/60 dark:border-[#373261]' 
         : 'bg-white/90 dark:bg-[#1A1736]/90 backdrop-blur-sm border-b border-[#E0E3FD]/40 dark:border-[#242045]'
     }`}>
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-2 sm:px-4 lg:px-6 h-16 sm:h-18">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-3 sm:px-4 lg:px-6 h-16 sm:h-20 gap-2 sm:gap-4">
         
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group shrink-0">
-          <div className="relative flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#4F5DE4]/20 bg-[#F1F2FD] dark:bg-[#242045] shadow-sm p-1 transition-transform duration-300 group-hover:scale-105">
+        <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
+          <div className="relative flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#4F5DE4]/20 bg-[#F1F2FD] dark:bg-[#242045] shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-105">
             <Image
               src="/logo.png"
               alt="شعار منصة الهَدَّاف"
-              width={44}
-              height={44}
+              width={48}
+              height={48}
               className="object-contain"
               priority
             />
           </div>
           <div className="flex flex-col">
-            <div className="flex items-center gap-1">
-              <span className="text-base sm:text-lg lg:text-xl font-black tracking-tight text-[#2A254D] dark:text-white font-heading">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base sm:text-xl lg:text-2xl font-black tracking-tight text-[#2A254D] dark:text-white font-heading">
                 الهَدَّاف
               </span>
-              <span className="rounded-md bg-[#4F5DE4]/10 text-[#4F5DE4] dark:bg-[#4F5DE4]/20 dark:text-[#aab5f5] px-1.5 py-0.5 text-[9px] font-black border border-[#4F5DE4]/20">
+              <span className="rounded-md bg-[#4F5DE4]/10 text-[#4F5DE4] dark:bg-[#4F5DE4]/20 dark:text-[#aab5f5] px-2 py-0.5 text-[10px] sm:text-xs font-black border border-[#4F5DE4]/20">
                 التعليمي
               </span>
             </div>
-            <p className="text-[9px] font-semibold text-[#697585] dark:text-[#B3ADE1] leading-tight flex items-center gap-1 mt-0.5">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-[#697585] dark:text-[#B3ADE1] leading-tight flex items-center gap-1.5 mt-0.5">
               <span>{currentCountry.flag}</span>
               <span>مناهج {currentCountry.name.replace('المملكة العربية ', '').replace('جمهورية ', '').replace('دولة ', '').replace('سلطنة ', '')}</span>
             </p>
@@ -150,14 +151,14 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation with distinct page pills and clear separators */}
-        <nav className="hidden xl:flex items-center gap-1 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink min-w-0">
+        <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink-0">
           {mainNavLinks.map((link, idx) => {
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
 
             if (link.hasDropdown) {
               return (
                 <React.Fragment key={link.name}>
-                  {idx > 0 && <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />}
+                  {idx > 0 && <span className="h-4 w-px bg-slate-300 dark:bg-slate-700 shrink-0 mx-0.5" />}
                   <div 
                     className="relative"
                     onMouseEnter={() => setCurriculumDropdown(true)}
@@ -165,14 +166,14 @@ export default function Navbar() {
                   >
                     <button
                       onClick={() => setCurriculumDropdown(!curriculumDropdown)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+                      className={`flex items-center gap-1 px-3 py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
                         isActive
-                          ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
+                          ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-sm'
                           : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
                       }`}
                     >
                       <span>{link.name}</span>
-                      <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${curriculumDropdown ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${curriculumDropdown ? 'rotate-180' : ''}`} />
                     </button>
 
                     {curriculumDropdown && (
@@ -222,53 +223,60 @@ export default function Navbar() {
             const Icon = link.icon;
             return (
               <React.Fragment key={link.name}>
-                {idx > 0 && <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />}
+                {idx > 0 && <span className="h-4 w-px bg-slate-300 dark:bg-slate-700 shrink-0 mx-0.5" />}
                 <Link
                   href={link.href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
                     isActive
-                      ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
+                      ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-sm'
                       : link.highlight
                         ? 'text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50'
                         : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
                   }`}
                 >
-                  {Icon && <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" />}
+                  {Icon && <Icon className="h-4 w-4 shrink-0 opacity-80" />}
                   <span>{link.name}</span>
                 </Link>
               </React.Fragment>
             );
           })}
 
-          <span className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0" />
+          <span className="h-4 w-px bg-slate-300 dark:bg-slate-700 shrink-0 mx-0.5" />
 
-          {/* "عن المنصة" dropdown */}
+          {/* "المزيد" dropdown — groups secondary pages */}
           <div
             className="relative"
-            onMouseEnter={() => setAboutDropdown(true)}
-            onMouseLeave={() => setAboutDropdown(false)}
+            onMouseEnter={() => setMoreDropdown(true)}
+            onMouseLeave={() => setMoreDropdown(false)}
           >
             <button
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] 2xl:text-xs font-bold rounded-xl transition-all whitespace-nowrap border ${
-                ['/about', '/contact'].includes(pathname)
-                  ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-xs'
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+                ['/about', '/contact', '/quizzes', '/blog'].includes(pathname)
+                  ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-sm'
                   : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
               }`}
             >
-              <span>عن المنصة</span>
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${aboutDropdown ? 'rotate-180' : ''}`} />
+              <MoreHorizontal className="h-4 w-4 opacity-70" />
+              <span>المزيد</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${moreDropdown ? 'rotate-180' : ''}`} />
             </button>
-            {aboutDropdown && (
-              <div className="absolute top-full right-0 w-48 rounded-2xl border border-[#E0E3FD] dark:border-[#373261] bg-white dark:bg-[#242045] p-2 shadow-xl animate-fade-in z-50">
-                {aboutLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold text-[#2A254D] dark:text-slate-200 hover:bg-[#F1F2FD] dark:hover:bg-[#1A1736] hover:text-[#4F5DE4] dark:hover:text-[#aab5f5] transition-colors"
-                  >
-                    <link.icon className="h-3.5 w-3.5 text-[#4F5DE4]" />
-                    {link.name}
-                  </Link>
+            {moreDropdown && (
+              <div className="absolute top-full right-0 w-52 rounded-2xl border border-[#E0E3FD] dark:border-[#373261] bg-white dark:bg-[#242045] p-2 shadow-xl animate-fade-in z-50">
+                {moreLinks.map((link, i) => (
+                  <React.Fragment key={link.href}>
+                    {i === 2 && <div className="my-1 border-t border-slate-100 dark:border-slate-800" />}
+                    <Link
+                      href={link.href}
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${
+                        pathname === link.href
+                          ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#1A1736]'
+                          : 'text-[#2A254D] dark:text-slate-200 hover:bg-[#F1F2FD] dark:hover:bg-[#1A1736] hover:text-[#4F5DE4] dark:hover:text-[#aab5f5]'
+                      }`}
+                    >
+                      <link.icon className="h-4 w-4 text-[#4F5DE4]" />
+                      {link.name}
+                    </Link>
+                  </React.Fragment>
                 ))}
               </div>
             )}
@@ -276,10 +284,10 @@ export default function Navbar() {
         </nav>
 
         {/* Separator between pages and controls */}
-        <div className="hidden xl:block h-7 w-px bg-slate-200 dark:bg-slate-800 mx-2 shrink-0" />
+        <div className="hidden lg:block h-7 w-px bg-slate-200 dark:bg-slate-800 mx-1 shrink-0" />
 
         {/* Right-side actions */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
 
           {/* Country Switcher — admin sees all, students see their own flag */}
           <div className="relative" ref={countryRef}>
@@ -292,10 +300,10 @@ export default function Navbar() {
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
                 >
                   <span className="text-base leading-none">{currentCountry.flag}</span>
-                  <span className="hidden 2xl:inline max-w-[80px] truncate">
+                  <span className="hidden xl:inline max-w-[80px] truncate">
                     {currentCountry.name.replace('المملكة العربية ', '').replace('جمهورية ', '').replace(' الأردنية الهاشمية', '').replace(' العربية المتحدة', '')}
                   </span>
-                  <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${countryDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${countryDropdown ? 'rotate-180' : ''}`} />
                 </button>
 
                 {countryDropdown && (
@@ -344,14 +352,14 @@ export default function Navbar() {
 
           {/* Responsive Quick Search (Compact icon on laptop / expands on click) */}
           <div className="relative flex items-center" ref={searchRef}>
-            {/* Expanded search popup for screens (< xl) */}
+            {/* Expanded search popup for screens (< lg) */}
             {searchOpen && (
               <form 
                 onSubmit={(e) => {
                   handleSearch(e);
                   setSearchOpen(false);
                 }} 
-                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl z-50 flex items-center gap-2 animate-fade-in xl:hidden"
+                className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl z-50 flex items-center gap-2 animate-fade-in lg:hidden"
               >
                 <input
                   ref={searchInputRef}
@@ -379,7 +387,7 @@ export default function Navbar() {
               </form>
             )}
 
-            {/* Icon only on screens (< xl) */}
+            {/* Icon only on mobile/tablet screens (< lg) */}
             <button
               type="button"
               onClick={() => {
@@ -387,19 +395,19 @@ export default function Navbar() {
                 setTimeout(() => searchInputRef.current?.focus(), 100);
               }}
               title="بحث في المنصة"
-              className="flex xl:hidden h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
-              <Search className="h-3.5 w-3.5" />
+              <Search className="h-4 w-4" />
             </button>
 
-            {/* Full search input only on wide screens (>= xl) */}
-            <form onSubmit={handleSearch} className="hidden xl:flex relative items-center">
+            {/* Full search input on laptop and desktop screens (>= lg) */}
+            <form onSubmit={handleSearch} className="hidden lg:flex relative items-center">
               <input
                 type="text"
                 placeholder="ابحث عن درس..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-28 xl:w-36 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 pr-7 pl-2.5 text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:w-40 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all duration-300"
+                className="w-28 xl:w-36 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 pr-7 pl-2.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:w-44 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all duration-300"
               />
               <Search className="absolute right-2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             </form>
@@ -504,7 +512,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex xl:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex lg:hidden h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="القائمة"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -514,7 +522,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
+        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 pt-4 pb-6 space-y-3 shadow-2xl animate-fade-in">
           <form onSubmit={handleSearch} className="relative">
             <input
               type="text"
@@ -552,7 +560,7 @@ export default function Navbar() {
           )}
 
           <div className="space-y-1 pt-1">
-            {[...mainNavLinks, ...aboutLinks].map((link) => (
+            {[...mainNavLinks, ...moreLinks].map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
