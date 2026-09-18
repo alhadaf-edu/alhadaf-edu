@@ -139,32 +139,32 @@ export default function Navbar() {
           : 'bg-white/90 dark:bg-[#1A1736]/90 backdrop-blur-md border-b border-[#E0E3FD]/70 dark:border-[#242045]'
       }`}
     >
-      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-2 px-3 sm:px-4 lg:px-6 h-16 sm:h-[72px]">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-2 lg:gap-3 px-3 sm:px-4 lg:px-4 xl:px-6 h-16 sm:h-[72px]">
 
         {/* ════════════════════════════════
             LOGO + BRAND
         ════════════════════════════════ */}
-        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-3 group">
-          <div className="relative flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#4F5DE4]/20 bg-[#F1F2FD] dark:bg-[#242045] shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-105">
+        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5 group">
+          <div className="relative flex h-9 w-9 sm:h-10 sm:w-10 xl:h-11 xl:w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#4F5DE4]/20 bg-[#F1F2FD] dark:bg-[#242045] shadow-xs p-1 transition-transform duration-200 group-hover:scale-105">
             <Image
               src="/logo.png"
               alt="شعار منصة الهَدَّاف"
-              width={48}
-              height={48}
+              width={42}
+              height={42}
               priority
               className="object-contain"
             />
           </div>
           <div className="hidden xs:flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-base sm:text-lg lg:text-xl font-black tracking-tight text-[#2A254D] dark:text-white font-heading whitespace-nowrap">
+              <span className="text-base sm:text-lg xl:text-xl font-black tracking-tight text-[#2A254D] dark:text-white font-heading whitespace-nowrap">
                 الهَدَّاف
               </span>
-              <span className="hidden sm:inline-flex rounded-md bg-[#4F5DE4]/10 text-[#4F5DE4] dark:bg-[#4F5DE4]/20 dark:text-[#aab5f5] px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black border border-[#4F5DE4]/20">
+              <span className="hidden xl:inline-flex rounded-md bg-[#4F5DE4]/10 text-[#4F5DE4] dark:bg-[#4F5DE4]/20 dark:text-[#aab5f5] px-1.5 py-0.5 text-[9px] font-black border border-[#4F5DE4]/20">
                 التعليمي
               </span>
             </div>
-            <span className="hidden md:flex items-center gap-1 text-[9px] lg:text-[10px] font-semibold text-[#697585] dark:text-[#B3ADE1] leading-tight">
+            <span className="hidden 2xl:flex items-center gap-1 text-[9px] font-semibold text-[#697585] dark:text-[#B3ADE1] leading-tight">
               <span>{currentCountry.flag}</span>
               <span>مناهج {countryName}</span>
             </span>
@@ -173,16 +173,17 @@ export default function Navbar() {
 
         {/* ════════════════════════════════
             DESKTOP NAVIGATION (تظهر في الكمبيوتر فقط)
-            الرئيسية + المناهج + الحصص المباشرة + بنك الاختبارات + مكتبة الفيديو + المقالات + من نحن وتواصل معنا (زر مدمج)
+            أحجام دقيقة ومسافات متناسقة لمنع أي تداخل
         ════════════════════════════════ */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink min-w-0">
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 2xl:gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shrink-0">
+          
           {/* 1. الرئيسية */}
           <Link
             href="/"
-            className={`flex items-center gap-1 px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+            className={`flex items-center shrink-0 gap-1 px-2 py-1.5 xl:px-2.5 xl:py-1.5 2xl:px-3 2xl:py-2 text-[11px] xl:text-xs 2xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap border ${
               isActive('/')
                 ? 'bg-white dark:bg-[#242045] text-[#4F5DE4] dark:text-[#aab5f5] border-[#4F5DE4]/40 shadow-xs'
-                : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>الرئيسية</span>
@@ -191,88 +192,89 @@ export default function Navbar() {
           {/* 2. المناهج الدراسية */}
           <Link
             href="/curriculum"
-            className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+            className={`flex items-center shrink-0 gap-1 px-2 py-1.5 xl:px-2.5 xl:py-1.5 2xl:px-3 2xl:py-2 text-[11px] xl:text-xs 2xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap border ${
               isActive('/curriculum')
                 ? 'bg-white dark:bg-[#242045] text-[#4F5DE4] dark:text-[#aab5f5] border-[#4F5DE4]/40 shadow-xs'
-                : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <GraduationCap className="h-4 w-4 opacity-80" />
+            <GraduationCap className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
             <span>المناهج الدراسية</span>
           </Link>
 
           {/* 3. 🔴 الحصص المباشرة */}
           <Link
             href="/live-classes"
-            className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+            className={`flex items-center shrink-0 gap-1 px-2 py-1.5 xl:px-2.5 xl:py-1.5 2xl:px-3 2xl:py-2 text-[11px] xl:text-xs 2xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap border ${
               isActive('/live-classes')
-                ? 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40 shadow-xs'
+                ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50 shadow-xs'
                 : 'text-red-600 dark:text-red-400 border-transparent hover:border-red-200 dark:hover:border-red-900/40 hover:bg-red-50/60 dark:hover:bg-red-950/20'
             }`}
           >
-            <Radio className="h-4 w-4 shrink-0 animate-pulse" />
+            <Radio className="h-3.5 w-3.5 xl:h-4 xl:w-4 shrink-0 animate-pulse" />
             <span>الحصص المباشرة</span>
           </Link>
 
           {/* 4. بنك الاختبارات */}
           <Link
             href="/quizzes"
-            className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+            className={`flex items-center shrink-0 gap-1 px-2 py-1.5 xl:px-2.5 xl:py-1.5 2xl:px-3 2xl:py-2 text-[11px] xl:text-xs 2xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap border ${
               isActive('/quizzes')
                 ? 'bg-white dark:bg-[#242045] text-[#4F5DE4] dark:text-[#aab5f5] border-[#4F5DE4]/40 shadow-xs'
-                : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <FileQuestion className="h-4 w-4 opacity-80" />
+            <FileQuestion className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
             <span>بنك الاختبارات</span>
           </Link>
 
           {/* 5. مكتبة الفيديو */}
           <Link
             href="/videos"
-            className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+            className={`flex items-center shrink-0 gap-1 px-2 py-1.5 xl:px-2.5 xl:py-1.5 2xl:px-3 2xl:py-2 text-[11px] xl:text-xs 2xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap border ${
               isActive('/videos')
                 ? 'bg-white dark:bg-[#242045] text-[#4F5DE4] dark:text-[#aab5f5] border-[#4F5DE4]/40 shadow-xs'
-                : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Video className="h-4 w-4 opacity-80" />
+            <Video className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
             <span>مكتبة الفيديو</span>
           </Link>
 
           {/* 6. المقالات */}
           <Link
             href="/blog"
-            className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+            className={`flex items-center shrink-0 gap-1 px-2 py-1.5 xl:px-2.5 xl:py-1.5 2xl:px-3 2xl:py-2 text-[11px] xl:text-xs 2xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap border ${
               isActive('/blog')
                 ? 'bg-white dark:bg-[#242045] text-[#4F5DE4] dark:text-[#aab5f5] border-[#4F5DE4]/40 shadow-xs'
-                : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <BookOpen className="h-4 w-4 opacity-80" />
+            <BookOpen className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
             <span>المقالات</span>
           </Link>
 
           {/* 7. زر مدمج: من نحن وتواصل معنا */}
           <div
             ref={aboutRef}
-            className="relative"
+            className="relative shrink-0"
             onMouseEnter={() => setAboutOpen(true)}
             onMouseLeave={() => setAboutOpen(false)}
           >
             <button
               type="button"
               onClick={() => setAboutOpen(!aboutOpen)}
-              className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
+              className={`flex items-center shrink-0 gap-1 px-2 py-1.5 xl:px-2.5 xl:py-1.5 2xl:px-3 2xl:py-2 text-[11px] xl:text-xs 2xl:text-[13px] font-bold rounded-xl transition-all whitespace-nowrap border ${
                 isAboutActive
                   ? 'bg-white dark:bg-[#242045] text-[#4F5DE4] dark:text-[#aab5f5] border-[#4F5DE4]/40 shadow-xs'
-                  : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
+                  : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <HelpCircle className="h-4 w-4 opacity-80" />
-              <span>من نحن وتواصل معنا</span>
+              <HelpCircle className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
+              <span className="hidden 2xl:inline">من نحن وتواصل معنا</span>
+              <span className="2xl:hidden">من نحن والتواصل</span>
               <ChevronDown
-                className={`h-3.5 w-3.5 opacity-60 transition-transform duration-200 ${
+                className={`h-3 w-3 opacity-60 transition-transform duration-200 ${
                   aboutOpen ? 'rotate-180' : ''
                 }`}
               />
@@ -283,7 +285,7 @@ export default function Navbar() {
                 <Link
                   href="/about"
                   onClick={() => setAboutOpen(false)}
-                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
                     pathname === '/about'
                       ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#1A1736]'
                       : 'text-[#2A254D] dark:text-slate-200 hover:bg-[#F1F2FD] dark:hover:bg-[#1A1736] hover:text-[#4F5DE4] dark:hover:text-[#aab5f5]'
@@ -298,7 +300,7 @@ export default function Navbar() {
                 <Link
                   href="/contact"
                   onClick={() => setAboutOpen(false)}
-                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
                     pathname === '/contact'
                       ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-[#F1F2FD] dark:bg-[#1A1736]'
                       : 'text-[#2A254D] dark:text-slate-200 hover:bg-[#F1F2FD] dark:hover:bg-[#1A1736] hover:text-[#4F5DE4] dark:hover:text-[#aab5f5]'
@@ -330,12 +332,12 @@ export default function Navbar() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="ابحث عن درس أو مادة..."
-                  className="min-w-0 flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4F5DE4]"
+                  className="min-w-0 flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4F5DE4]"
                 />
                 <button
                   type="submit"
                   aria-label="تنفيذ البحث"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#4F5DE4] text-white hover:bg-[#3d49cb] transition-colors"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#4F5DE4] text-white hover:bg-[#3d49cb] transition-colors"
                 >
                   <Search className="h-4 w-4" />
                 </button>
@@ -346,7 +348,7 @@ export default function Navbar() {
               onClick={() => setSearchOpen(!searchOpen)}
               aria-label="البحث"
               title="البحث"
-              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+              className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 xl:h-10 xl:w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
             >
               {searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
             </button>
@@ -358,7 +360,7 @@ export default function Navbar() {
             onClick={toggleTheme}
             aria-label={theme === 'dark' ? 'تفعيل الوضع النهاري' : 'تفعيل الوضع الليلي'}
             title={theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
-            className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-yellow-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 xl:h-10 xl:w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-yellow-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -371,10 +373,10 @@ export default function Navbar() {
                 onClick={() => setCountryOpen(!countryOpen)}
                 title={`تبديل المنهج أو الدولة للمشرف (${currentCountry.name})`}
                 aria-label="تبديل المنهج أو الدولة"
-                className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative"
+                className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 xl:h-10 xl:w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative"
               >
                 <Globe2 className="h-4 w-4 text-[#4F5DE4]" />
-                <span className="absolute -bottom-1 -left-1 text-xs leading-none">
+                <span className="absolute -bottom-1 -left-1 text-[11px] leading-none">
                   {currentCountry.flag}
                 </span>
               </button>
@@ -432,7 +434,7 @@ export default function Navbar() {
               href="/admin"
               title={isAdmin ? 'لوحة الإدارة' : 'لوحة المشرف'}
               aria-label="لوحة الإدارة"
-              className="hidden sm:flex h-9 w-9 sm:h-10 sm:w-10 lg:w-auto items-center justify-center gap-1.5 rounded-xl bg-[#4F5DE4] px-0 lg:px-3 text-white font-bold text-xs shadow-md hover:bg-[#3d49cb] transition-all"
+              className="hidden sm:flex h-8.5 w-8.5 sm:h-9 sm:w-9 xl:h-10 xl:w-auto items-center justify-center gap-1.5 rounded-xl bg-[#4F5DE4] px-0 xl:px-3 text-white font-bold text-xs shadow-md hover:bg-[#3d49cb] transition-all"
             >
               <ShieldCheck className="h-4 w-4" />
               <span className="hidden xl:inline">لوحة الإدارة</span>
@@ -447,7 +449,7 @@ export default function Navbar() {
                 onClick={() => setUserOpen(!userOpen)}
                 aria-label="حسابي"
                 aria-expanded={userOpen}
-                className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-[#E0E3FD] dark:border-[#373261] bg-[#F1F2FD] dark:bg-[#242045] text-[#4F5DE4] transition-all"
+                className="flex h-8.5 w-8.5 sm:h-9 sm:w-9 xl:h-10 xl:w-10 items-center justify-center rounded-xl border border-[#E0E3FD] dark:border-[#373261] bg-[#F1F2FD] dark:bg-[#242045] text-[#4F5DE4] transition-all"
               >
                 <UserIcon className="h-4 w-4" />
               </button>
@@ -465,14 +467,14 @@ export default function Navbar() {
                   <div className="mt-1 space-y-0.5">
                     <Link
                       href="/profile"
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       <UserIcon className="h-4 w-4" />
                       الملف الشخصي
                     </Link>
                     <Link
                       href="/profile?tab=saved"
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       <Bookmark className="h-4 w-4" />
                       الدروس المحفوظة
@@ -480,7 +482,7 @@ export default function Navbar() {
                     {canAccessAdmin && (
                       <Link
                         href="/admin"
-                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-[#4F5DE4] hover:bg-[#F1F2FD] dark:hover:bg-[#1A1736]"
+                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-[#4F5DE4] hover:bg-[#F1F2FD] dark:hover:bg-[#1A1736]"
                       >
                         <ShieldCheck className="h-4 w-4" />
                         {isAdmin ? 'لوحة الإدارة' : 'لوحة المشرف'}
@@ -489,7 +491,7 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={() => { setUserOpen(false); logout(); }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                     >
                       <LogOut className="h-4 w-4" />
                       تسجيل الخروج
@@ -503,13 +505,13 @@ export default function Navbar() {
             <div className="hidden xl:flex items-center gap-1.5 shrink-0">
               <Link
                 href="/auth/login"
-                className="px-3 py-2 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="px-2.5 py-1.5 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 دخول
               </Link>
               <Link
                 href="/auth/register"
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-[#F57005] hover:bg-[#ea580c] text-white shadow-sm transition-all"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-[#F57005] hover:bg-[#ea580c] text-white shadow-xs transition-all"
               >
                 <UserIcon className="h-3.5 w-3.5" />
                 <span>حساب جديد</span>
@@ -523,7 +525,7 @@ export default function Navbar() {
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="قائمة المزيد"
             aria-expanded={menuOpen}
-            className={`flex lg:hidden h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border transition-all ${
+            className={`flex lg:hidden h-8.5 w-8.5 sm:h-9 sm:w-9 xl:h-10 xl:w-10 items-center justify-center rounded-xl border transition-all ${
               menuOpen
                 ? 'border-[#4F5DE4] bg-[#4F5DE4] text-white'
                 : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -616,7 +618,7 @@ export default function Navbar() {
                         key={stage.id}
                         href={`/curriculum?stage=${stage.id}`}
                         onClick={() => setMenuOpen(false)}
-                        className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
+                        className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
                       >
                         <span>{stage.name}</span>
                         <span className="text-[10px] text-slate-400">{stage.gradesCount} صفوف</span>
@@ -702,14 +704,14 @@ export default function Navbar() {
                 <Link
                   href="/auth/login"
                   onClick={() => setMenuOpen(false)}
-                  className="flex flex-1 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="flex flex-1 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   تسجيل الدخول
                 </Link>
                 <Link
                   href="/auth/register"
                   onClick={() => setMenuOpen(false)}
-                  className="flex flex-1 items-center justify-center rounded-xl bg-[#F57005] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#ea580c]"
+                  className="flex flex-1 items-center justify-center rounded-xl bg-[#F57005] px-4 py-2 text-xs font-bold text-white hover:bg-[#ea580c]"
                 >
                   إنشاء حساب
                 </Link>
