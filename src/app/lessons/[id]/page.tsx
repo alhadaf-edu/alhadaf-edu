@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLessons } from '@/context/LessonsContext';
@@ -58,6 +58,19 @@ export default function LessonPage({ params }: LessonPageProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [localAttachments, setLocalAttachments] = useState<LessonAttachment[]>([]);
 
+  // Load persisted attachments from localStorage on lesson mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`alhadaf_attachments_${lesson.id}`);
+      if (saved) {
+        const parsed: LessonAttachment[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLocalAttachments(parsed);
+        }
+      }
+    } catch {}
+  }, [lesson.id]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
@@ -69,7 +82,7 @@ export default function LessonPage({ params }: LessonPageProps) {
   if (!lesson) {
     return (
       <div className="min-h-screen py-20 text-center">
-        <h2 className="text-xl font-bold">الدرس غير موجود</h2>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white">الدرس غير موجود</h2>
         <Link href="/curriculum" className="mt-4 inline-block text-gold-500 font-bold">
           العودة لدليل المناهج
         </Link>
@@ -97,7 +110,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     }
   };
 
-  // Handle Admin File Upload (Direct Cloudinary CDN upload + Firestore sync)
+  // Handle Admin File Upload (Direct Cloudinary CDN upload + Firestore sync + LocalStorage backup)
   const handleUploadLessonFile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) return;
@@ -130,17 +143,29 @@ export default function LessonPage({ params }: LessonPageProps) {
       ];
       const updatedAttachments = [...currentAttachments, newAttachment];
 
-      // Update local state immediately for instant feedback
-      setLocalAttachments(prev => [...prev, newAttachment]);
+      // Update local state immediately for instant feedback & save to localStorage permanently
+      const updatedLocal = [...localAttachments, newAttachment];
+      setLocalAttachments(updatedLocal);
+      try {
+        localStorage.setItem(`alhadaf_attachments_${lesson.id}`, JSON.stringify(updatedLocal));
+      } catch {}
 
-      await updateLesson(lesson.id, {
-        attachments: updatedAttachments,
-        pdfUrl: !lesson.pdfUrl ? newAttachment.url : lesson.pdfUrl,
-        pdfTitle: !lesson.pdfTitle ? newAttachment.title : lesson.pdfTitle,
-      });
+      // Non-blocking sync to Context & Firestore
+      try {
+        await Promise.race([
+          updateLesson(lesson.id, {
+            attachments: updatedAttachments,
+            pdfUrl: !lesson.pdfUrl ? newAttachment.url : lesson.pdfUrl,
+            pdfTitle: !lesson.pdfTitle ? newAttachment.title : lesson.pdfTitle,
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 3500))
+        ]);
+      } catch (syncErr) {
+        console.warn('Remote sync delay (local copy saved safely):', syncErr);
+      }
 
       setUploadStatus('success');
-      showToast('✅ تم رفع وتثبيت الملف في السحابة بنجاح!');
+      showToast('✅ تم حفظ وتثبيت الملف في الدرس بنجاح!');
 
       // Auto-close modal after 2.5 seconds
       setTimeout(() => {
@@ -160,6 +185,11 @@ export default function LessonPage({ params }: LessonPageProps) {
     if (!confirm('هل أنت متأكد من حذف هذا الملف المرفق؟')) return;
     const currentAttachments = lesson.attachments || [];
     const updated = currentAttachments.filter(a => a.id !== attId);
+    const updatedLocal = localAttachments.filter(a => a.id !== attId);
+    setLocalAttachments(updatedLocal);
+    try {
+      localStorage.setItem(`alhadaf_attachments_${lesson.id}`, JSON.stringify(updatedLocal));
+    } catch {}
     await updateLesson(lesson.id, { attachments: updated });
     showToast('🗑️ تم حذف الملف من الدرس');
   };

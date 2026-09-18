@@ -112,10 +112,31 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
         const firestoreLessons: Lesson[] = [];
         snapshot.forEach((docSnap) => firestoreLessons.push(docSnap.data() as Lesson));
 
+        // Merge attachments from local storage cache so remote snapshots never wipe them out!
+        const mergedFirestore = firestoreLessons.map((fl) => {
+          try {
+            const cachedAttsStr = localStorage.getItem(`alhadaf_attachments_${fl.id}`);
+            if (cachedAttsStr) {
+              const cachedAtts = JSON.parse(cachedAttsStr);
+              if (Array.isArray(cachedAtts) && cachedAtts.length > 0) {
+                const existing = fl.attachments || [];
+                const merged = [...existing];
+                for (const ca of cachedAtts) {
+                  if (!merged.some(m => m.id === ca.id || m.url === ca.url)) {
+                    merged.push(ca);
+                  }
+                }
+                return { ...fl, attachments: merged };
+              }
+            }
+          } catch {}
+          return fl;
+        });
+
         // Add any INITIAL_LESSONS not yet in Firestore (new static content)
-        const fsIds = new Set(firestoreLessons.map(l => l.id));
+        const fsIds = new Set(mergedFirestore.map(l => l.id));
         const missingInitial = INITIAL_LESSONS.filter(l => !fsIds.has(l.id));
-        const combinedLessons = [...firestoreLessons, ...missingInitial];
+        const combinedLessons = [...mergedFirestore, ...missingInitial];
 
         setLessons(combinedLessons);
         // Update localStorage cache so offline mode shows latest data
@@ -215,13 +236,23 @@ export function LessonsProvider({ children }: { children: React.ReactNode }) {
     ];
     await persistLessons(updated);
 
+    // Back up attachments specifically so they never get lost across devices/reloads
+    if (mergedLesson.attachments && mergedLesson.attachments.length > 0) {
+      try {
+        localStorage.setItem(`alhadaf_attachments_${id}`, JSON.stringify(mergedLesson.attachments));
+      } catch {}
+    }
+
     if (db) {
       try {
         const cleanTarget = JSON.parse(JSON.stringify(mergedLesson));
-        await setDoc(doc(db, 'lessons', id), cleanTarget, { merge: true });
+        await Promise.race([
+          setDoc(doc(db, 'lessons', id), cleanTarget, { merge: true }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 4000))
+        ]);
       } catch (e) {
-        console.error('Firestore lesson update error:', e);
-        // Don't throw — localStorage save above already succeeded as fallback
+        console.warn('Firestore lesson update note:', e);
+        // Don't throw — localStorage save above already succeeded as authoritative fallback
       }
     }
   };

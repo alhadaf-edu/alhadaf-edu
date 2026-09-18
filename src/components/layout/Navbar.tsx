@@ -116,16 +116,16 @@ export default function Navbar() {
 
   const isAboutActive = pathname === '/about' || pathname === '/contact';
 
-  /* ─── All links for mobile drawer ─── */
+  /* ─── All links for mobile drawer with dark mode icon colors ─── */
   const mobileMenuLinks = [
-    { name: 'الرئيسية',         href: '/',             icon: null,          highlight: false },
-    { name: 'الحصص المباشرة',   href: '/live-classes', icon: Radio,         highlight: true  },
-    { name: 'المناهج الدراسية', href: '/curriculum',   icon: GraduationCap, highlight: false },
-    { name: 'بنك الاختبارات',  href: '/quizzes',      icon: FileQuestion,  highlight: false },
-    { name: 'مكتبة الفيديو',    href: '/videos',       icon: Video,         highlight: false },
-    { name: 'المقالات',         href: '/blog',          icon: BookOpen,      highlight: false },
-    { name: 'من نحن',           href: '/about',         icon: Info,          highlight: false },
-    { name: 'تواصل معنا',       href: '/contact',       icon: Phone,         highlight: false },
+    { name: 'الرئيسية',         href: '/',             icon: null,          color: 'text-[#4F5DE4] dark:text-[#aab5f5]', highlight: false },
+    { name: 'الحصص المباشرة',   href: '/live-classes', icon: Radio,         color: 'text-red-600 dark:text-red-400',     highlight: true  },
+    { name: 'المناهج الدراسية', href: '/curriculum',   icon: GraduationCap, color: 'text-indigo-600 dark:text-indigo-400', highlight: false },
+    { name: 'بنك الاختبارات',  href: '/quizzes',      icon: FileQuestion,  color: 'text-amber-600 dark:text-amber-400', highlight: false },
+    { name: 'مكتبة الفيديو',    href: '/videos',       icon: Video,         color: 'text-blue-600 dark:text-blue-400',   highlight: false },
+    { name: 'المقالات',         href: '/blog',          icon: BookOpen,      color: 'text-emerald-600 dark:text-emerald-400', highlight: false },
+    { name: 'من نحن',           href: '/about',         icon: Info,          color: 'text-cyan-600 dark:text-cyan-400',   highlight: false },
+    { name: 'تواصل معنا',       href: '/contact',       icon: Phone,         color: 'text-purple-600 dark:text-purple-400', highlight: false },
   ];
 
   /* ══════════════════════════════════════════════
@@ -198,7 +198,7 @@ export default function Navbar() {
                 : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <GraduationCap className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
+            <GraduationCap className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-indigo-500 dark:text-indigo-400" />
             <span>المناهج الدراسية</span>
           </Link>
 
@@ -211,7 +211,7 @@ export default function Navbar() {
                 : 'text-red-600 dark:text-red-400 border-transparent hover:border-red-200 dark:hover:border-red-900/40 hover:bg-red-50/60 dark:hover:bg-red-950/20'
             }`}
           >
-            <Radio className="h-3.5 w-3.5 xl:h-4 xl:w-4 shrink-0 animate-pulse" />
+            <Radio className="h-3.5 w-3.5 xl:h-4 xl:w-4 shrink-0 animate-pulse text-red-600 dark:text-red-400" />
             <span>الحصص المباشرة</span>
           </Link>
 
@@ -224,7 +224,7 @@ export default function Navbar() {
                 : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <FileQuestion className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
+            <FileQuestion className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-amber-500 dark:text-amber-400" />
             <span>بنك الاختبارات</span>
           </Link>
 
@@ -237,7 +237,7 @@ export default function Navbar() {
                 : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Video className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
+            <Video className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-blue-500 dark:text-blue-400" />
             <span>مكتبة الفيديو</span>
           </Link>
 
@@ -250,7 +250,7 @@ export default function Navbar() {
                 : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <BookOpen className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
+            <BookOpen className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-emerald-500 dark:text-emerald-400" />
             <span>المقالات</span>
           </Link>
 
@@ -270,7 +270,7 @@ export default function Navbar() {
                   : 'text-slate-600 dark:text-slate-300 border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <HelpCircle className="h-3.5 w-3.5 xl:h-4 xl:w-4 opacity-80" />
+              <HelpCircle className="h-3.5 w-3.5 xl:h-4 xl:w-4 text-purple-500 dark:text-purple-400" />
               <span className="hidden 2xl:inline">من نحن وتواصل معنا</span>
               <span className="2xl:hidden">من نحن والتواصل</span>
               <ChevronDown
@@ -581,9 +581,9 @@ export default function Navbar() {
                         : 'border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#4F5DE4]/30 hover:bg-[#F8F8FF] dark:hover:bg-[#242045]'
                     }`}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-[#1A1736] shadow-xs text-[#4F5DE4] dark:text-[#aab5f5]">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#F1F2FD] dark:bg-[#242045] shadow-xs border border-[#E0E3FD]/60 dark:border-[#373261]">
                       {Icon ? (
-                        <Icon className={`h-4 w-4 ${link.highlight ? 'text-red-500 animate-pulse' : ''}`} />
+                        <Icon className={`h-4 w-4 ${link.color || 'text-[#4F5DE4] dark:text-[#aab5f5]'} ${link.highlight ? 'animate-pulse' : ''}`} />
                       ) : (
                         <span className="text-xs font-black">🏠</span>
                       )}
