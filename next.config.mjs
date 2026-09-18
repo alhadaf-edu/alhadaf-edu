@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
+// force-rebuild: v2
 const nextConfig = {
   reactStrictMode: true,
+  headers: async () => [
+    {
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Build-Version', value: '2' },
+      ],
+    },
+  ],
   images: {
     remotePatterns: [
       {
