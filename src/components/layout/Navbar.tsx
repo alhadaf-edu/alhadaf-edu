@@ -99,19 +99,14 @@ export default function Navbar() {
     { name: 'المناهج الدراسية', href: '/curriculum', hasDropdown: true },
     { name: 'الحصص المباشرة', href: '/live-classes', icon: Radio, highlight: true },
     { name: 'مكتبة الفيديو', href: '/videos', icon: Video },
+    { name: 'من نحن', href: '/about', icon: Info },
+    { name: 'تواصل معنا', href: '/contact', icon: Phone },
   ];
 
   // Items grouped under "المزيد" dropdown in desktop nav
   const moreLinks = [
     { name: 'بنك الاختبارات', href: '/quizzes', icon: FileQuestion },
     { name: 'المقالات', href: '/blog', icon: BookOpen },
-    { name: 'من نحن', href: '/about', icon: Info },
-    { name: 'تواصل معنا', href: '/contact', icon: Phone },
-  ];
-
-  const aboutLinks = [
-    { name: 'من نحن', href: '/about', icon: Info },
-    { name: 'تواصل معنا', href: '/contact', icon: Phone },
   ];
 
   return (
@@ -251,7 +246,7 @@ export default function Navbar() {
           >
             <button
               className={`flex items-center gap-1.5 px-3 py-2 text-xs xl:text-sm font-bold rounded-xl transition-all whitespace-nowrap border ${
-                ['/about', '/contact', '/quizzes', '/blog'].includes(pathname)
+                ['/quizzes', '/blog'].includes(pathname)
                   ? 'text-[#4F5DE4] dark:text-[#aab5f5] bg-white dark:bg-[#242045] border-[#4F5DE4]/40 shadow-sm'
                   : 'text-slate-700 dark:text-slate-200 border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white/90 dark:hover:bg-slate-800/90'
               }`}
@@ -264,7 +259,6 @@ export default function Navbar() {
               <div className="absolute top-full right-0 w-52 rounded-2xl border border-[#E0E3FD] dark:border-[#373261] bg-white dark:bg-[#242045] p-2 shadow-xl animate-fade-in z-50">
                 {moreLinks.map((link, i) => (
                   <React.Fragment key={link.href}>
-                    {i === 2 && <div className="my-1 border-t border-slate-100 dark:border-slate-800" />}
                     <Link
                       href={link.href}
                       className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${
