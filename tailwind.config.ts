@@ -80,10 +80,60 @@ const config: Config = {
         'glow-primary': '0 0 25px -5px rgba(79, 93, 228, 0.35)',
         'tiqdr': '0 10px 30px 0 rgba(79, 93, 228, 0.08)',
         'tiqdr-hover': '0 15px 35px 0 rgba(79, 93, 228, 0.15)',
+        'card-dark': '0 8px 32px 0 rgba(0,0,0,0.45)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-      }
+      },
+      keyframes: {
+        slideUp: {
+          from: { opacity: '0', transform: 'translateY(32px)' },
+          to:   { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideInRight: {
+          from: { opacity: '0', transform: 'translateX(32px)' },
+          to:   { opacity: '1', transform: 'translateX(0)' },
+        },
+        slideInLeft: {
+          from: { opacity: '0', transform: 'translateX(-32px)' },
+          to:   { opacity: '1', transform: 'translateX(0)' },
+        },
+        scaleIn: {
+          from: { opacity: '0', transform: 'scale(0.88)' },
+          to:   { opacity: '1', transform: 'scale(1)' },
+        },
+        floatY: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%':       { transform: 'translateY(-8px)' },
+        },
+        pulseSoft: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%':       { transform: 'scale(1.04)', opacity: '0.85' },
+        },
+        shimmer: {
+          '0%':   { backgroundPosition: '-200% center' },
+          '100%': { backgroundPosition: '200% center' },
+        },
+        glowPulse: {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(79, 93, 228, 0)' },
+          '50%':       { boxShadow: '0 0 0 8px rgba(79, 93, 228, 0.15)' },
+        },
+      },
+      animation: {
+        'slide-up':       'slideUp 0.5s cubic-bezier(0.16,1,0.3,1) both',
+        'slide-in-right': 'slideInRight 0.5s cubic-bezier(0.16,1,0.3,1) both',
+        'slide-in-left':  'slideInLeft 0.5s cubic-bezier(0.16,1,0.3,1) both',
+        'scale-in':       'scaleIn 0.4s cubic-bezier(0.16,1,0.3,1) both',
+        'float':          'floatY 3.5s ease-in-out infinite',
+        'pulse-soft':     'pulseSoft 2.5s ease-in-out infinite',
+        'shimmer':        'shimmer 1.8s linear infinite',
+        'glow-pulse':     'glowPulse 2.5s ease-in-out infinite',
+      },
+      transitionDuration: {
+        '400': '400ms',
+        '600': '600ms',
+        '800': '800ms',
+      },
     },
   },
   plugins: [],

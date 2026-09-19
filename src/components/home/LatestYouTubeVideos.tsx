@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { YouTubeVideo } from '@/types';
 import { Youtube, Play, ExternalLink, Calendar, X } from 'lucide-react';
 import { useLessons } from '@/context/LessonsContext';
+import { useScrollReveal, useStaggerReveal } from '@/hooks/useScrollReveal';
 
 interface LatestYouTubeVideosProps {
   videos: YouTubeVideo[];
@@ -14,7 +15,9 @@ export default function LatestYouTubeVideos({ videos }: LatestYouTubeVideosProps
   const { lessons } = useLessons();
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
-  // Extract videos from synced lessons to ensure newly synced videos show immediately
+  const { ref: headerRef, isVisible: headerVisible } = useScrollReveal({ threshold: 0.1 });
+  const { ref: gridRef, isVisible: gridVisible, delayClass } = useStaggerReveal({ threshold: 0.05 });
+
   const syncedVideos: YouTubeVideo[] = lessons
     .filter(l => l.youtubeId)
     .map(l => ({
@@ -27,7 +30,6 @@ export default function LatestYouTubeVideos({ videos }: LatestYouTubeVideosProps
       viewCount: `${l.viewsCount || 1200}`,
     }));
 
-  // Combine synced videos first, then server fallback videos without duplicates
   const seenIds = new Set<string>();
   const allVideos: YouTubeVideo[] = [];
 
@@ -47,11 +49,14 @@ export default function LatestYouTubeVideos({ videos }: LatestYouTubeVideosProps
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+        <div
+          ref={headerRef as React.RefObject<HTMLDivElement>}
+          className={`reveal ${headerVisible ? 'visible' : ''} flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10`}
+        >
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-1 rounded-full mb-2">
               <Youtube className="h-4 w-4" />
-              <span>مزامنة مباشرة مع قناة الْهَدَّاف على YouTube</span>
+              <span>مزامنة مباشرة مع قناة الْهَدَّاف على YouTube</span>
             </div>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-heading">
               أحدث الفيديوهات والشروحات المرفوعة
@@ -73,11 +78,14 @@ export default function LatestYouTubeVideos({ videos }: LatestYouTubeVideosProps
         </div>
 
         {/* Videos Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {allVideos.slice(0, 6).map((video) => (
+        <div
+          ref={gridRef}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {allVideos.slice(0, 6).map((video, idx) => (
             <div
               key={video.id}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              className={`reveal ${gridVisible ? 'visible' : ''} ${delayClass(idx)} group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-card-dark`}
             >
               {/* Thumbnail with overlay */}
               <div className="relative aspect-video w-full overflow-hidden bg-slate-950">

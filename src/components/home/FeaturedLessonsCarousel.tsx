@@ -8,6 +8,7 @@ import { Sparkles, ChevronRight, ChevronLeft, ArrowLeft } from 'lucide-react';
 import { useLessons } from '@/context/LessonsContext';
 import { useAuth } from '@/context/AuthContext';
 import { getCountryInfo } from '@/lib/curriculumData';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 interface FeaturedLessonsCarouselProps {
   initialLessons?: Lesson[];
@@ -22,7 +23,6 @@ export default function FeaturedLessonsCarousel({ initialLessons }: FeaturedLess
 
   const allLessons = lessons.length > 0 ? lessons : (initialLessons || []);
   
-  // Filter lessons strictly for active country unless admin or general
   const displayLessons = allLessons.filter(l => {
     if (isAdmin || activeCountryCode === 'general') return true;
     const lessonCountry = l.country || 'sa';
@@ -30,6 +30,8 @@ export default function FeaturedLessonsCarousel({ initialLessons }: FeaturedLess
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { ref: headerRef, isVisible: headerVisible } = useScrollReveal({ threshold: 0.1 });
+  const { ref: carouselRef, isVisible: carouselVisible } = useScrollReveal({ threshold: 0.05 });
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -45,7 +47,10 @@ export default function FeaturedLessonsCarousel({ initialLessons }: FeaturedLess
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div
+          ref={headerRef as React.RefObject<HTMLDivElement>}
+          className={`reveal ${headerVisible ? 'visible' : ''} flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8`}
+        >
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-gold-400 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 rounded-full mb-2">
               <Sparkles className="h-4 w-4" />
@@ -90,18 +95,23 @@ export default function FeaturedLessonsCarousel({ initialLessons }: FeaturedLess
 
         {/* Carousel Container */}
         <div
-          ref={scrollRef}
-          className="flex gap-6 overflow-x-auto pb-4 pt-1 snap-x scrollbar-none"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          ref={carouselRef as React.RefObject<HTMLDivElement>}
+          className={`reveal ${carouselVisible ? 'visible' : ''} stagger-2`}
         >
-          {displayLessons.map((lesson) => (
-            <div
-              key={lesson.id}
-              className="w-[280px] sm:w-[320px] shrink-0 snap-start"
-            >
-              <LessonCard lesson={lesson} />
-            </div>
-          ))}
+          <div
+            ref={scrollRef}
+            className="flex gap-6 overflow-x-auto pb-4 pt-1 snap-x scrollbar-none"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {displayLessons.map((lesson) => (
+              <div
+                key={lesson.id}
+                className="w-[280px] sm:w-[320px] shrink-0 snap-start"
+              >
+                <LessonCard lesson={lesson} />
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
