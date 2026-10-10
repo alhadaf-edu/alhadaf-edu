@@ -17,6 +17,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, googleProvider, db, RecaptchaVerifier, signInWithPhoneNumber } from '@/lib/firebase';
 import { QuizResult, UserProfile, CountryCode, StageType, UserRole } from '@/types';
+import { QuizResult, UserProfile, CountryCode, StageType, UserRole, TelegramUser } from '@/types';
 import { normalizeRole } from '@/lib/rbac';
 
 interface AuthContextType {
@@ -31,6 +32,7 @@ interface AuthContextType {
   loading: boolean;
   needsCurriculumSelection: boolean;
   loginWithGoogle: (rememberMe?: boolean) => Promise<void>;
+  loginWithTelegram: (telegramUser: TelegramUser, rememberMe?: boolean) => Promise<void>;
   loginWithEmail: (email: string, pass: string, rememberMe?: boolean) => Promise<void>;
   registerWithEmail: (
     name: string, 
@@ -242,6 +244,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {}
       await syncProfileToFirestore(userProfile);
     }
+  };
+
+  const loginWithTelegram = async (telegramUser: TelegramUser, rememberMe: boolean = true) => {
+    if (!auth) throw new Error('Firebase Auth not available');
+    try {
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alhadaf_remember_me', rememberMe ? 'true' : 'false');
+      }
+    } catch (e) {
+      console.warn('Set persistence note:', e);
+    }
+
+    const tgEmail = `tg_${telegramUser.id}@telegram.alhadaf.edu`;
+    const tgPassword = `TG_ALHADAF_${telegramUser.id}_AUTH_2026`;
+    const displayName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim() || telegramUser.username || `طالب تيليجرام ${telegramUser.id}`;
+
+    let fbUser: User;
+    try {
+      const res = await signInWithEmailAndPassword(auth, tgEmail, tgPassword);
+      fbUser = res.user;
+    } catch (loginErr: any) {
+      if (
+        loginErr.code === 'auth/user-not-found' ||
+        loginErr.code === 'auth/invalid-credential' ||
+        loginErr.code === 'auth/wrong-password'
+      ) {
+        const createRes = await createUserWithEmailAndPassword(auth, tgEmail, tgPassword);
+        fbUser = createRes.user;
+        try {
+          await updateProfile(fbUser, {
+            displayName,
+            photoURL: telegramUser.photo_url || undefined,
+          });
+        } catch {}
+      } else {
+        throw loginErr;
+      }
+    }
+
+    // Load or create Firestore user profile
+    const isAdminUser = fbUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    let existingData: UserProfile | null = null;
+    if (db) {
+      try {
+        const snap = await getDoc(doc(db, 'users', fbUser.uid));
+        if (snap.exists()) {
+          existingData = snap.data() as UserProfile;
+        }
+      } catch {}
+    }
+
+    const userProfile: UserProfile = existingData || {
+      uid: fbUser.uid,
+      email: '',
+      displayName,
+      photoURL: telegramUser.photo_url || undefined,
+      telegramId: telegramUser.id,
+      telegramUsername: telegramUser.username || undefined,
+      role: isAdminUser ? 'superadmin' : 'student',
+      status: 'active',
+      savedLessons: [],
+      quizHistory: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    if (isAdminUser) userProfile.role = 'superadmin';
+    if (telegramUser.photo_url && !userProfile.photoURL) {
+      userProfile.photoURL = telegramUser.photo_url;
+    }
+    if (telegramUser.username && !userProfile.telegramUsername) {
+      userProfile.telegramUsername = telegramUser.username;
+    }
+
+    setProfile(userProfile);
+    if (!isAdminUser && !userProfile.country) {
+      setNeedsCurriculumSelection(true);
+    } else {
+      setNeedsCurriculumSelection(false);
+    }
+
+    try {
+      localStorage.setItem(`alhadaf_user_${fbUser.uid}`, JSON.stringify(userProfile));
+      if (userProfile.country) {
+        localStorage.setItem(COUNTRY_STORAGE_KEY, userProfile.country);
+      }
+      upsertUserInLocalList(userProfile);
+    } catch {}
+
+    await syncProfileToFirestore(userProfile);
   };
 
   const loginWithEmail = async (email: string, pass: string, rememberMe: boolean = true) => {
@@ -599,6 +691,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         needsCurriculumSelection,
         loginWithGoogle,
+        loginWithTelegram,
         loginWithEmail,
         registerWithEmail,
         checkPhoneNumberExists,
