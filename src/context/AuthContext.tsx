@@ -16,7 +16,6 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, googleProvider, db, RecaptchaVerifier, signInWithPhoneNumber } from '@/lib/firebase';
-import { QuizResult, UserProfile, CountryCode, StageType, UserRole } from '@/types';
 import { QuizResult, UserProfile, CountryCode, StageType, UserRole, TelegramUser } from '@/types';
 import { normalizeRole } from '@/lib/rbac';
 
