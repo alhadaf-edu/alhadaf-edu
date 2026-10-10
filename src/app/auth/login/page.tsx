@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import IslamicPattern from '@/components/layout/IslamicPattern';
 import { 
   Mail, Lock, LogIn, AlertCircle, Phone, 
-  MessageSquare, CheckCircle2, ArrowLeft, RefreshCw, ShieldCheck
+  MessageSquare, CheckCircle2, ArrowLeft, RefreshCw, ShieldCheck, UserPlus
 } from 'lucide-react';
 import type { ConfirmationResult } from 'firebase/auth';
 import { ARAB_COUNTRIES } from '@/lib/curriculumData';
@@ -39,7 +39,15 @@ type PhoneStep = 'input' | 'otp';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginWithGoogle, loginWithEmail, sendPhoneOTP, confirmPhoneOTP, user, needsCurriculumSelection } = useAuth();
+  const { 
+    loginWithGoogle, 
+    loginWithEmail, 
+    sendPhoneOTP, 
+    confirmPhoneOTP, 
+    checkPhoneNumberExists,
+    user, 
+    needsCurriculumSelection 
+  } = useAuth();
 
   // ── Shared ─────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<LoginTab>('email');
@@ -56,6 +64,7 @@ export default function LoginPage() {
   const [countryDialCode, setCountryDialCode] = useState('+20'); // مصر افتراضي
   const [localPhone, setLocalPhone] = useState(''); // الرقم بدون كود الدولة
   const [phoneStep, setPhoneStep] = useState<PhoneStep>('input');
+  const [notRegistered, setNotRegistered] = useState(false);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [otpTimer, setOtpTimer] = useState(0);
@@ -137,8 +146,20 @@ export default function LoginPage() {
       return;
     }
     setError('');
+    setNotRegistered(false);
     setLoading(true);
+
     try {
+      // 1. التحقق أولاً: هل رقم الهاتف مسجل بالفعل في المنصة؟
+      const isRegistered = await checkPhoneNumberExists(fullPhone);
+      if (!isRegistered) {
+        setNotRegistered(true);
+        setError('هذا الرقم غير مسجل في المنصة. يرجى إنشاء حساب جديد أولاً للاستفادة من خدمات المنصة.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. إذا كان الرقم مسجلاً، نرسل رمز التحقق للدخول
       const result = await sendPhoneOTP(fullPhone, recaptchaContainerId);
       setConfirmation(result);
       setPhoneStep('otp');
@@ -489,6 +510,22 @@ export default function LoginPage() {
                       </>
                     )}
                   </button>
+
+                  {notRegistered && (
+                    <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-4 text-center space-y-2.5 animate-scale-in">
+                      <p className="text-xs font-bold text-amber-800 dark:text-amber-200">
+                        رقم الهاتف <span className="font-mono dir-ltr font-black" dir="ltr">{fullPhone}</span> غير مسجل حتى الآن.
+                      </p>
+                      <Link
+                        href={`/auth/register?tab=phone&phone=${localPhone}&dial=${encodeURIComponent(countryDialCode)}`}
+                        className="inline-flex items-center justify-center gap-2 w-full rounded-xl bg-amber-600 hover:bg-amber-700 text-white py-2.5 text-xs font-bold transition-all shadow-sm"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        <span>إنشاء حساب جديد بهذا الرقم الآن</span>
+                        <ArrowLeft className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  )}
                 </>
               )}
 

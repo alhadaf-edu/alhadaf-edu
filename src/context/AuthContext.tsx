@@ -14,7 +14,7 @@ import {
   browserSessionPersistence,
   ConfirmationResult as FirebaseConfirmationResult,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, googleProvider, db, RecaptchaVerifier, signInWithPhoneNumber } from '@/lib/firebase';
 import { QuizResult, UserProfile, CountryCode, StageType, UserRole } from '@/types';
 import { normalizeRole } from '@/lib/rbac';
@@ -40,10 +40,23 @@ interface AuthContextType {
     stage?: StageType, 
     gradeNumber?: number
   ) => Promise<void>;
+  /** Check if a phone number is already registered in the platform */
+  checkPhoneNumberExists: (phone: string) => Promise<boolean>;
   /** Step 1: Send OTP SMS — returns confirmation for step 2 */
   sendPhoneOTP: (phone: string, recaptchaContainerId: string) => Promise<FirebaseConfirmationResult>;
-  /** Step 2: Verify the OTP code user entered */
+  /** Step 2 (Login): Verify OTP code for existing registered user */
   confirmPhoneOTP: (confirmation: FirebaseConfirmationResult, code: string) => Promise<void>;
+  /** Step 2 (Register): Verify OTP code and save new student profile */
+  registerWithPhone: (
+    confirmation: FirebaseConfirmationResult,
+    code: string,
+    metadata: {
+      name: string;
+      country: CountryCode;
+      stage: StageType;
+      gradeNumber: number;
+    }
+  ) => Promise<void>;
   logout: () => Promise<void>;
   saveQuizResult: (result: QuizResult) => Promise<void>;
   toggleSaveLesson: (lessonId: string) => Promise<void>;
@@ -360,9 +373,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * Step 2 — Verify OTP code.
-   * On success, Firebase signs the user in automatically (onAuthStateChanged fires).
-   * We then create/merge the Firestore user profile.
+   * Check if phone number already exists in Firestore users or local storage.
+   */
+  const checkPhoneNumberExists = async (phone: string): Promise<boolean> => {
+    if (!phone) return false;
+    const clean = phone.trim();
+
+    // 1. Fast check in local storage cache
+    const localUsers = getAllUsersLocal();
+    if (localUsers.some(u => u.phoneNumber === clean)) {
+      return true;
+    }
+
+    // 2. Query Firestore users collection
+    if (db) {
+      try {
+        const q1 = query(collection(db, 'users'), where('phoneNumber', '==', clean));
+        const snap1 = await getDocs(q1);
+        if (!snap1.empty) return true;
+
+        // Alternate with/without leading '+' in case of format differences
+        const alt = clean.startsWith('+') ? clean.slice(1) : `+${clean}`;
+        const q2 = query(collection(db, 'users'), where('phoneNumber', '==', alt));
+        const snap2 = await getDocs(q2);
+        if (!snap2.empty) return true;
+      } catch (err) {
+        console.warn('checkPhoneNumberExists Firestore query error:', err);
+      }
+    }
+
+    return false;
+  };
+
+  /**
+   * Step 2 (Login) — Verify OTP code for existing registered user.
    */
   const confirmPhoneOTP = async (
     confirmation: FirebaseConfirmationResult,
@@ -379,9 +423,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (db) {
         try {
-          const snap = await getDoc(doc(db, 'users', fbUser.uid));
-          if (snap.exists()) existingData = snap.data() as UserProfile;
-        } catch {}
+          const userDocRef = doc(db, 'users', fbUser.uid);
+          const snap = await getDoc(userDocRef);
+          if (snap.exists()) {
+            existingData = snap.data() as UserProfile;
+          } else if (fbUser.phoneNumber) {
+            // Check by phone number in case registered previously under different doc ID
+            const q = query(collection(db, 'users'), where('phoneNumber', '==', fbUser.phoneNumber));
+            const phoneSnap = await getDocs(q);
+            if (!phoneSnap.empty) {
+              existingData = phoneSnap.docs[0].data() as UserProfile;
+            }
+          }
+        } catch (err) {
+          console.warn('Error fetching user profile by phone:', err);
+        }
       }
 
       const userProfile: UserProfile = existingData || {
@@ -402,11 +458,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setProfile(userProfile);
+      if (userProfile.country) {
+        setNeedsCurriculumSelection(false);
+      }
       try {
         localStorage.setItem(`alhadaf_user_${fbUser.uid}`, JSON.stringify(userProfile));
+        if (userProfile.country) {
+          localStorage.setItem(COUNTRY_STORAGE_KEY, userProfile.country);
+        }
         upsertUserInLocalList(userProfile);
       } catch {}
       await syncProfileToFirestore(userProfile);
+    }
+  };
+
+  /**
+   * Step 2 (Register) — Verify OTP code and save new student profile with country & grade.
+   */
+  const registerWithPhone = async (
+    confirmation: FirebaseConfirmationResult,
+    code: string,
+    metadata: {
+      name: string;
+      country: CountryCode;
+      stage: StageType;
+      gradeNumber: number;
+    }
+  ): Promise<void> => {
+    if (!auth) throw new Error('Firebase Auth not available');
+
+    const result = await confirmation.confirm(code);
+    const fbUser = result.user;
+
+    if (fbUser) {
+      if (metadata.name) {
+        try {
+          await updateProfile(fbUser, { displayName: metadata.name.trim() });
+        } catch {}
+      }
+
+      const newProfile: UserProfile = {
+        uid: fbUser.uid,
+        email: fbUser.email || '',
+        displayName: metadata.name.trim() || fbUser.phoneNumber || 'مشترك',
+        phoneNumber: fbUser.phoneNumber || undefined,
+        country: metadata.country,
+        stage: metadata.stage,
+        gradeNumber: metadata.gradeNumber,
+        role: 'student',
+        status: 'active',
+        savedLessons: [],
+        quizHistory: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      setProfile(newProfile);
+      setNeedsCurriculumSelection(false);
+      try {
+        localStorage.setItem(`alhadaf_user_${fbUser.uid}`, JSON.stringify(newProfile));
+        localStorage.setItem(COUNTRY_STORAGE_KEY, metadata.country);
+        upsertUserInLocalList(newProfile);
+      } catch {}
+
+      await syncProfileToFirestore(newProfile);
     }
   };
 
@@ -487,8 +601,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
+        checkPhoneNumberExists,
         sendPhoneOTP,
         confirmPhoneOTP,
+        registerWithPhone,
         logout,
         saveQuizResult,
         toggleSaveLesson,
