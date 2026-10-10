@@ -165,6 +165,7 @@ export interface UserProfile {
   displayName: string;
   name?: string;
   photoURL?: string;
+  phoneNumber?: string;
   role: UserRole;
   status?: UserStatus;
   assignedCountry?: CountryCode;

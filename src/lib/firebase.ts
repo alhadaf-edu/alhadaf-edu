@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, Auth, GoogleAuthProvider, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
@@ -30,3 +30,5 @@ try {
 }
 
 export { app, auth, db, storage, googleProvider };
+export { RecaptchaVerifier, signInWithPhoneNumber };
+export type { ConfirmationResult };

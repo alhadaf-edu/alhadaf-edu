@@ -64,3 +64,4 @@ export function useStaggerReveal<T extends HTMLElement = HTMLDivElement>(
 
   return { ref, isVisible, delayClass };
 }
+

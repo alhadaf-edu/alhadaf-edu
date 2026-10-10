@@ -11,10 +11,11 @@ import {
   updateProfile,
   setPersistence,
   browserLocalPersistence,
-  browserSessionPersistence
+  browserSessionPersistence,
+  ConfirmationResult as FirebaseConfirmationResult,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
-import { auth, googleProvider, db } from '@/lib/firebase';
+import { auth, googleProvider, db, RecaptchaVerifier, signInWithPhoneNumber } from '@/lib/firebase';
 import { QuizResult, UserProfile, CountryCode, StageType, UserRole } from '@/types';
 import { normalizeRole } from '@/lib/rbac';
 
@@ -39,6 +40,10 @@ interface AuthContextType {
     stage?: StageType, 
     gradeNumber?: number
   ) => Promise<void>;
+  /** Step 1: Send OTP SMS — returns confirmation for step 2 */
+  sendPhoneOTP: (phone: string, recaptchaContainerId: string) => Promise<FirebaseConfirmationResult>;
+  /** Step 2: Verify the OTP code user entered */
+  confirmPhoneOTP: (confirmation: FirebaseConfirmationResult, code: string) => Promise<void>;
   logout: () => Promise<void>;
   saveQuizResult: (result: QuizResult) => Promise<void>;
   toggleSaveLesson: (lessonId: string) => Promise<void>;
@@ -285,6 +290,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Step 1 — Send OTP via Firebase Phone Auth (SMS).
+   * Creates an invisible reCAPTCHA on `recaptchaContainerId` div,
+   * then fires the SMS. Returns a ConfirmationResult for step 2.
+   */
+  const sendPhoneOTP = async (
+    phone: string,
+    recaptchaContainerId: string
+  ): Promise<FirebaseConfirmationResult> => {
+    if (!auth) throw new Error('Firebase Auth not available');
+
+    // Clean up any existing reCAPTCHA widget
+    const existing = (window as any).__recaptchaVerifier;
+    if (existing) {
+      try { existing.clear(); } catch {}
+      delete (window as any).__recaptchaVerifier;
+    }
+
+    const verifier = new RecaptchaVerifier(auth, recaptchaContainerId, {
+      size: 'invisible',
+      callback: () => {},
+      'expired-callback': () => {},
+    });
+    (window as any).__recaptchaVerifier = verifier;
+
+    const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
+    return confirmation;
+  };
+
+  /**
+   * Step 2 — Verify OTP code.
+   * On success, Firebase signs the user in automatically (onAuthStateChanged fires).
+   * We then create/merge the Firestore user profile.
+   */
+  const confirmPhoneOTP = async (
+    confirmation: FirebaseConfirmationResult,
+    code: string
+  ): Promise<void> => {
+    if (!auth) throw new Error('Firebase Auth not available');
+
+    const result = await confirmation.confirm(code);
+    const fbUser = result.user;
+
+    if (fbUser) {
+      const isAdminUser = fbUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      let existingData: UserProfile | null = null;
+
+      if (db) {
+        try {
+          const snap = await getDoc(doc(db, 'users', fbUser.uid));
+          if (snap.exists()) existingData = snap.data() as UserProfile;
+        } catch {}
+      }
+
+      const userProfile: UserProfile = existingData || {
+        uid: fbUser.uid,
+        email: fbUser.email || '',
+        displayName: fbUser.displayName || fbUser.phoneNumber || 'مشترك',
+        phoneNumber: fbUser.phoneNumber || undefined,
+        role: isAdminUser ? 'superadmin' : 'student',
+        status: 'active',
+        savedLessons: [],
+        quizHistory: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      if (isAdminUser) userProfile.role = 'superadmin';
+      if (!userProfile.phoneNumber && fbUser.phoneNumber) {
+        userProfile.phoneNumber = fbUser.phoneNumber;
+      }
+
+      setProfile(userProfile);
+      try {
+        localStorage.setItem(`alhadaf_user_${fbUser.uid}`, JSON.stringify(userProfile));
+        upsertUserInLocalList(userProfile);
+      } catch {}
+      await syncProfileToFirestore(userProfile);
+    }
+  };
+
   const updateUserProfile = async (data: Partial<UserProfile>) => {
     if (!profile) return;
     const updated = { ...profile, ...data };
@@ -362,6 +447,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
+        sendPhoneOTP,
+        confirmPhoneOTP,
         logout,
         saveQuizResult,
         toggleSaveLesson,
