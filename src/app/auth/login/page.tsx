@@ -170,7 +170,9 @@ export default function LoginPage() {
       const code = err.code || '';
       const msg = err.message || '';
 
-      if (code === 'auth/operation-not-allowed') {
+      if (code === 'auth/billing-not-enabled') {
+        setError('إرسال رسائل SMS الحقيقية يتطلب تفعيل خطة Blaze (Pay as you go) في Firebase. يمكنك بدلاً من ذلك استخدام رقم هاتف تجريبي (Phone numbers for testing) في لوحة Firebase لتسجيل الدخول مجاناً.');
+      } else if (code === 'auth/operation-not-allowed') {
         setError('خدمة الهاتف مقيدة في Firebase: تأكد من تفعيل Phone في Sign-in method، وإضافة دولتك إلى SMS region policy أو استخدام رقم اختبار (Phone numbers for testing) في لوحة Firebase.');
       } else if (code === 'auth/unauthorized-domain') {
         setError('هذا النطاق غير مصرح به في Firebase. يرجى إضافة رابط الموقع الحالي إلى Authorized Domains في Firebase Console.');
