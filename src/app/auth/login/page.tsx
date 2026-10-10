@@ -116,6 +116,18 @@ export default function LoginPage() {
     }
   };
 
+  // ── Cleanup reCAPTCHA on unmount ───────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && (window as any).__recaptchaVerifier) {
+        try {
+          (window as any).__recaptchaVerifier.clear();
+        } catch {}
+        delete (window as any).__recaptchaVerifier;
+      }
+    };
+  }, []);
+
   /** Build full E.164 phone number: +201012345678 */
   const fullPhone = `${countryDialCode}${localPhone.replace(/^0+/, '')}`;
 
@@ -134,12 +146,25 @@ export default function LoginPage() {
       setTimeout(() => otpRefs.current[0]?.focus(), 200);
     } catch (err: any) {
       console.error('OTP send error:', err);
-      if (err.code === 'auth/invalid-phone-number') {
-        setError('رقم الهاتف غير صحيح. تأكد من اختيار كود الدولة الصحيح.');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('طلبات كثيرة جداً. انتظر قليلاً وحاول مرة أخرى.');
+      const code = err.code || '';
+      const msg = err.message || '';
+
+      if (code === 'auth/operation-not-allowed') {
+        setError('خدمة تسجيل الدخول بالهاتف غير مفعلة في Firebase Console. يرجى تفعيل Phone Authentication من لوحة التحكم.');
+      } else if (code === 'auth/unauthorized-domain') {
+        setError('هذا النطاق غير مصرح به في Firebase. يرجى إضافة رابط الموقع الحالي إلى Authorized Domains في Firebase Console.');
+      } else if (code === 'auth/invalid-phone-number') {
+        setError('رقم الهاتف غير صحيح. تأكد من اختيار كود الدولة الصحيح وكتابة الرقم بدون أصفار إضافية.');
+      } else if (code === 'auth/too-many-requests') {
+        setError('تم حظر المحاولات مؤقتاً بسبب تكرار الطلبات. يرجى الانتظار 5 دقائق والمحاولة مجدداً.');
+      } else if (code === 'auth/quota-exceeded') {
+        setError('تم تجاوز الحد اليومي للرسائل القصيرة في Firebase.');
+      } else if (code === 'auth/captcha-check-failed') {
+        setError('فشل التحقق الأمني (reCAPTCHA). يرجى الضغط مرة أخرى لإعادة المحاولة.');
+      } else if (msg.includes('already been rendered')) {
+        setError('حدث تعارض في التحقق الأمني. يرجى الضغط مرة أخرى.');
       } else {
-        setError(err.message || 'تعذر إرسال رمز التحقق. حاول مرة أخرى.');
+        setError(msg || 'تعذر إرسال رمز التحقق. يرجى التأكد من الرقم والمحاولة مجدداً.');
       }
     } finally {
       setLoading(false);
@@ -219,7 +244,7 @@ export default function LoginPage() {
       <IslamicPattern variant="stars" opacity={0.05} />
 
       {/* Invisible reCAPTCHA container — required by Firebase */}
-      <div id={recaptchaContainerId} className="hidden" />
+      <div id={recaptchaContainerId} />
 
       <div className="relative w-full max-w-md px-4 sm:px-6">
 

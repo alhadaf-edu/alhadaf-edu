@@ -292,31 +292,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Step 1 — Send OTP via Firebase Phone Auth (SMS).
-   * Creates an invisible reCAPTCHA on `recaptchaContainerId` div,
-   * then fires the SMS. Returns a ConfirmationResult for step 2.
+   * Robust reCAPTCHA lifecycle: ensures container element is clean
+   * and previous widgets are destroyed before creating a new verifier.
    */
   const sendPhoneOTP = async (
     phone: string,
     recaptchaContainerId: string
   ): Promise<FirebaseConfirmationResult> => {
     if (!auth) throw new Error('Firebase Auth not available');
+    if (typeof window === 'undefined') throw new Error('Window not available');
 
-    // Clean up any existing reCAPTCHA widget
+    // 1. Locate container in DOM
+    const container = document.getElementById(recaptchaContainerId);
+    if (!container) {
+      throw new Error(`حاوية reCAPTCHA #${recaptchaContainerId} غير موجودة في الصفحة.`);
+    }
+
+    // 2. Clear any existing RecaptchaVerifier
     const existing = (window as any).__recaptchaVerifier;
     if (existing) {
-      try { existing.clear(); } catch {}
+      try {
+        existing.clear();
+      } catch (e) {
+        console.warn('reCAPTCHA clear note:', e);
+      }
       delete (window as any).__recaptchaVerifier;
     }
 
-    const verifier = new RecaptchaVerifier(auth, recaptchaContainerId, {
+    // 3. Replace container with a clean clone to strip any internal grecaptcha widget IDs
+    // This prevents "reCAPTCHA has already been rendered in this element" error completely
+    const freshContainer = container.cloneNode(false) as HTMLElement;
+    freshContainer.innerHTML = '';
+    freshContainer.id = recaptchaContainerId;
+    container.parentNode?.replaceChild(freshContainer, container);
+
+    // 4. Create fresh invisible RecaptchaVerifier
+    const verifier = new RecaptchaVerifier(auth, freshContainer, {
       size: 'invisible',
-      callback: () => {},
-      'expired-callback': () => {},
+      callback: () => {
+        // reCAPTCHA solved
+      },
+      'expired-callback': () => {
+        try {
+          verifier.clear();
+        } catch {}
+        delete (window as any).__recaptchaVerifier;
+      },
     });
+
     (window as any).__recaptchaVerifier = verifier;
 
-    const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
-    return confirmation;
+    // 5. Send SMS with Firebase
+    try {
+      const confirmation = await signInWithPhoneNumber(auth, phone, verifier);
+      return confirmation;
+    } catch (err: any) {
+      // On failure, clear verifier and DOM so subsequent retry starts clean
+      try {
+        verifier.clear();
+      } catch {}
+      delete (window as any).__recaptchaVerifier;
+      if (freshContainer) {
+        freshContainer.innerHTML = '';
+      }
+      throw err;
+    }
   };
 
   /**
