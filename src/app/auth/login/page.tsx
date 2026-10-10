@@ -150,7 +150,7 @@ export default function LoginPage() {
       const msg = err.message || '';
 
       if (code === 'auth/operation-not-allowed') {
-        setError('خدمة تسجيل الدخول بالهاتف غير مفعلة في Firebase Console. يرجى تفعيل Phone Authentication من لوحة التحكم.');
+        setError('خدمة الهاتف مقيدة في Firebase: تأكد من تفعيل Phone في Sign-in method، وإضافة دولتك إلى SMS region policy أو استخدام رقم اختبار (Phone numbers for testing) في لوحة Firebase.');
       } else if (code === 'auth/unauthorized-domain') {
         setError('هذا النطاق غير مصرح به في Firebase. يرجى إضافة رابط الموقع الحالي إلى Authorized Domains في Firebase Console.');
       } else if (code === 'auth/invalid-phone-number') {
