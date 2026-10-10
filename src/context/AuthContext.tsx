@@ -316,6 +316,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (telegramUser.username && !userProfile.telegramUsername) {
       userProfile.telegramUsername = telegramUser.username;
     }
+    if (typeof window !== 'undefined') {
+      try {
+        const savedTgPhone = localStorage.getItem('alhadaf_tg_phone');
+        if (savedTgPhone && !userProfile.phoneNumber) {
+          userProfile.phoneNumber = savedTgPhone;
+        }
+      } catch {}
+    }
 
     setProfile(userProfile);
     if (!isAdminUser && !userProfile.country) {

@@ -153,6 +153,7 @@ export default function RegisterPage() {
             <TelegramLoginButton
               onAuth={handleTelegramAuth}
               disabled={loading}
+              mode="register"
               buttonText="التسجيل السريع بحساب Telegram"
             />
           </div>

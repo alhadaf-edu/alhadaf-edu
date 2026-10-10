@@ -147,6 +147,7 @@ export default function LoginPage() {
             <TelegramLoginButton
               onAuth={handleTelegramAuth}
               disabled={loading}
+              mode="login"
               buttonText="الدخول السريع بحساب Telegram"
             />
           </div>
